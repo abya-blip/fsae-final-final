@@ -568,5 +568,11 @@ footer{border-top:1px solid var(--line); padding:50px 0 30px; margin-top:40px;}
 }
 @media (prefers-reduced-motion: reduce){
   html{scroll-behavior:auto;}
-  *{transition-duration:.01ms !important; animation-duration:.01ms !important;}
+  /* Shrinking duration alone isn't enough for `infinite` animations (aurora,
+     marquee, gradient text, stripe, pulses) — a near-zero duration doesn't
+     calm them, it makes the browser replay the full loop ~100,000×/sec,
+     which renders as chaotic flicker. Capping iteration-count to 1 stops
+     the loop after one (imperceptible) pass instead of racing it forever. */
+  *{transition-duration:.01ms !important; transition-delay:0s !important;}
+  *{animation-duration:.01ms !important; animation-delay:-1ms !important; animation-iteration-count:1 !important;}
 }
