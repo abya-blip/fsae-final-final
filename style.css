@@ -77,9 +77,11 @@ button{background:none; border:none; cursor:pointer; color:inherit;}
 h1,h2,h3{font-family:var(--disp); font-weight:700; text-transform:uppercase; letter-spacing:0.01em; line-height:1.05;}
 .section-title{font-size:clamp(28px,4.5vw,44px); margin-bottom:18px; position:relative; display:inline-block;}
 .section-title::after{
-  content:""; position:absolute; left:0; bottom:-10px; width:64px; height:3px; border-radius:2px;
+  content:""; position:absolute; left:0; bottom:-10px; width:0; height:3px; border-radius:2px;
   background:linear-gradient(90deg, var(--amber), var(--ember));
+  transition:width .8s cubic-bezier(.16,1,.3,1) .1s;
 }
+.reveal.in .section-title::after, .section-title.reveal.in::after{width:64px;}
 .lede{color:var(--paper-dim); font-size:17px; max-width:640px;}
 section{position:relative; padding:88px 0;}
 .stripe-divider{
@@ -116,12 +118,20 @@ header{
 }
 header::after{content:""; position:absolute; bottom:-1px; left:0; right:0; height:1px; background:linear-gradient(90deg, transparent, var(--amber), var(--ember), transparent); opacity:0.7;}
 .nav{display:flex; align-items:center; justify-content:space-between; padding:14px 24px; max-width:1120px; margin:0 auto;}
-.brand{display:flex; align-items:center; gap:10px; font-family:var(--disp); font-weight:700; font-size:20px; letter-spacing:0.03em;}
-.brand-mark{
-  width:30px; height:30px; border:2px solid var(--amber); border-radius:50%;
-  display:flex; align-items:center; justify-content:center; font-family:var(--mono); font-size:11px; color:var(--amber);
-  box-shadow:0 0 14px rgba(0,217,255,0.5);
+.brand{display:flex; align-items:center; gap:12px; font-family:var(--disp); font-weight:700; font-size:20px; letter-spacing:0.03em; transition:filter .2s;}
+a.brand:hover{filter:brightness(1.18);}
+.brand-logo-wrap{
+  display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  width:40px; height:40px; padding:5px;
+  background:linear-gradient(135deg, rgba(234,242,250,0.98), rgba(220,232,246,0.88));
+  clip-path:polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+  box-shadow:0 0 0 1px rgba(0,217,255,0.35), 0 4px 16px -4px rgba(0,217,255,0.45);
+  transition:transform .35s cubic-bezier(.34,1.56,.64,1), box-shadow .3s;
+  animation:logoPop .7s cubic-bezier(.34,1.56,.64,1) both;
 }
+.brand-logo{width:100%; height:100%; object-fit:contain;}
+.brand:hover .brand-logo-wrap{transform:scale(1.08) rotate(-4deg); box-shadow:var(--shadow-glow-dual);}
+@keyframes logoPop{0%{opacity:0; transform:scale(.55) rotate(-10deg);} 100%{opacity:1; transform:scale(1) rotate(0);}}
 .nav-links{display:flex; gap:28px; font-size:14px; font-weight:500; letter-spacing:0.02em;}
 .nav-links a{color:var(--paper-dim); transition:color .2s; position:relative;}
 .nav-links a:hover{color:var(--amber);}
@@ -149,6 +159,12 @@ header::after{content:""; position:absolute; bottom:-1px; left:0; right:0; heigh
 
 /* HERO */
 .hero{min-height:100vh; display:flex; flex-direction:column; justify-content:center; padding-top:80px; position:relative;}
+.hero::before{
+  content:""; position:absolute; inset:0; z-index:-1; pointer-events:none;
+  background:radial-gradient(560px circle at var(--mx,50%) var(--my,10%), rgba(0,217,255,0.14), transparent 68%);
+  opacity:0; transition:opacity .5s ease;
+}
+.hero.spotlight-active::before{opacity:1;}
 .hero::after{
   content:"";
   position:absolute; top:-14%; left:50%; transform:translateX(-50%);
@@ -220,7 +236,14 @@ header::after{content:""; position:absolute; bottom:-1px; left:0; right:0; heigh
   border:1px solid var(--glass-border); padding:18px; border-radius:var(--radius-md);
   box-shadow:inset 0 1px 0 rgba(255,255,255,0.05);
   transition:border-color .2s, transform .2s, box-shadow .2s;
+  animation:postIn .5s cubic-bezier(.22,1,.36,1) both;
 }
+.subteam-card:nth-child(1){animation-delay:0ms;}
+.subteam-card:nth-child(2){animation-delay:70ms;}
+.subteam-card:nth-child(3){animation-delay:140ms;}
+.subteam-card:nth-child(4){animation-delay:210ms;}
+.subteam-card:nth-child(5){animation-delay:280ms;}
+.subteam-card:nth-child(6){animation-delay:350ms;}
 .subteam-card:hover{border-color:rgba(0,217,255,0.4); transform:translateY(-3px); box-shadow:var(--shadow-glow-dual);}
 .subteam-card h4{font-family:var(--disp); font-size:16px; font-weight:600; letter-spacing:0.02em; margin-bottom:6px;}
 .subteam-card p{font-size:13px; color:var(--paper-dim);}
@@ -275,7 +298,14 @@ header::after{content:""; position:absolute; bottom:-1px; left:0; right:0; heigh
   border:1px solid var(--glass-border); padding:22px; border-radius:var(--radius-md);
   box-shadow:inset 0 1px 0 rgba(255,255,255,0.05);
   display:flex; flex-direction:column; gap:10px; align-items:flex-start; transition:border-color .2s, transform .2s, box-shadow .2s;
+  animation:postIn .5s cubic-bezier(.22,1,.36,1) both;
 }
+.join-card:nth-child(1){animation-delay:0ms;}
+.join-card:nth-child(2){animation-delay:70ms;}
+.join-card:nth-child(3){animation-delay:140ms;}
+.join-card:nth-child(4){animation-delay:210ms;}
+.join-card:nth-child(5){animation-delay:280ms;}
+.join-card:nth-child(6){animation-delay:350ms;}
 .join-card:hover{border-color:rgba(0,217,255,0.4); transform:translateY(-4px); box-shadow:var(--shadow-glow-dual);}
 .join-tag{
   align-self:flex-start; font-family:var(--mono); font-size:10px; text-transform:uppercase; letter-spacing:0.08em;
@@ -568,6 +598,8 @@ footer{border-top:1px solid var(--line); padding:50px 0 30px; margin-top:40px;}
   .admin-header{align-items:flex-start;}
   section{padding:64px 0;}
   .hero{min-height:auto; padding-top:100px; padding-bottom:56px;}
+  .brand{font-size:17px; gap:9px;}
+  .brand-logo-wrap{width:34px; height:34px; padding:4px;}
   /* iOS Safari auto-zooms on focus into any input under 16px — this keeps forms usable without that jump */
   .field input, .field textarea, .field select,
   .admin-toolbar input[type="text"], .admin-toolbar select{font-size:16px;}

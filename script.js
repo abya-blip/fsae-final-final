@@ -82,6 +82,21 @@ function addPressFeedback(selector){
 }
 addPressFeedback('.btn-primary, .btn-ghost, .nav-cta, .join-apply');
 
+// ---------- hero cursor spotlight — a soft headlight glow that tracks the
+// pointer, desktop-only (touch devices have no hover) and skipped entirely
+// under reduced-motion since it's a continuous visual effect ----------
+(function heroSpotlight(){
+  const hero = document.querySelector('.hero');
+  if(!hero || reducedMotion || !window.matchMedia('(pointer:fine)').matches) return;
+  hero.addEventListener('pointermove', (e) => {
+    const r = hero.getBoundingClientRect();
+    hero.style.setProperty('--mx', `${((e.clientX - r.left) / r.width) * 100}%`);
+    hero.style.setProperty('--my', `${((e.clientY - r.top) / r.height) * 100}%`);
+  });
+  hero.addEventListener('pointerenter', () => hero.classList.add('spotlight-active'));
+  hero.addEventListener('pointerleave', () => hero.classList.remove('spotlight-active'));
+})();
+
 // animates a stat element from one number to another; safe to call repeatedly
 // as live data changes (e.g. the team roster growing)
 function animateCount(el, from, to, duration = 1){
