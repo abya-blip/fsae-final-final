@@ -484,7 +484,7 @@ header::after{content:""; position:absolute; bottom:-1px; left:0; right:0; heigh
 
 footer{border-top:1px solid var(--line); padding:50px 0 30px; margin-top:40px;}
 .foot-grid{display:flex; justify-content:space-between; flex-wrap:wrap; gap:24px;}
-.foot-links{display:flex; gap:20px; font-size:13px; color:var(--paper-dim);}
+.foot-links{display:flex; flex-wrap:wrap; gap:10px 20px; font-size:13px; color:var(--paper-dim);}
 .foot-links a:hover{color:var(--amber);}
 .fine{color:var(--steel); font-size:12px; margin-top:20px; font-family:var(--mono);}
 
@@ -555,7 +555,8 @@ footer{border-top:1px solid var(--line); padding:50px 0 30px; margin-top:40px;}
 
 @media (max-width:860px){
   .nav-links{display:none;}
-  .menu-btn{display:block;}
+  .nav-cta{display:none;} /* redundant with the hamburger menu's "Join Us" link + the hero's own CTA, and there's no room for it */
+  .menu-btn{display:block; width:44px; height:44px;} /* 44px meets the min. comfortable touch-target size */
   .about-grid{grid-template-columns:1fr;}
   .subteams{grid-template-columns:1fr 1fr;}
   .join-grid{grid-template-columns:1fr;}
@@ -565,6 +566,22 @@ footer{border-top:1px solid var(--line); padding:50px 0 30px; margin-top:40px;}
   .blog-header{align-items:flex-start;}
   .join-header{align-items:flex-start;}
   .admin-header{align-items:flex-start;}
+  section{padding:64px 0;}
+  .hero{min-height:auto; padding-top:100px; padding-bottom:56px;}
+  /* iOS Safari auto-zooms on focus into any input under 16px — this keeps forms usable without that jump */
+  .field input, .field textarea, .field select,
+  .admin-toolbar input[type="text"], .admin-toolbar select{font-size:16px;}
+}
+@media (max-width:560px){
+  .wrap{padding:0 18px;}
+  .subteams{grid-template-columns:1fr;}
+  .team-grid{grid-template-columns:1fr;}
+  .ticker-inner{grid-template-columns:1fr 1fr;}
+  .modal{padding:22px;}
+  .aurora span{filter:blur(50px);}
+  .aurora span:nth-child(1){width:340px; height:340px;}
+  .aurora span:nth-child(2){width:380px; height:380px;}
+  .aurora span:nth-child(3){width:320px; height:320px;}
 }
 @media (prefers-reduced-motion: reduce){
   html{scroll-behavior:auto;}
