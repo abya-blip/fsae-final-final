@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>IIPE Racing — SAE Supra 2027</title>
 <meta name="theme-color" content="#0A0E16">
 <link rel="icon" href="assets/favicon.ico" sizes="any">
@@ -21,7 +21,7 @@
 <header>
   <div class="nav">
     <a href="#home" class="brand"><span class="brand-logo-wrap"><img class="brand-logo" src="assets/logo.png" alt="IIPE Racing"></span> RACING</a>
-    <nav class="nav-links">
+    <nav class="nav-links" id="navLinksList">
       <a href="#about">About</a>
       <a href="#announcements">Announcements<span class="nav-alert" id="navAnnounceAlert" style="display:none;"></span></a>
       <a href="#team">Team</a>
@@ -30,7 +30,7 @@
       <a href="#blog">Blog</a>
     </nav>
     <a href="#join" class="nav-cta" id="navJoinBtn">Join The Team</a>
-    <button class="menu-btn" id="menuBtn" aria-label="Toggle menu">☰</button>
+    <button class="menu-btn" id="menuBtn" aria-label="Toggle menu" aria-expanded="false" aria-controls="navLinksList">☰</button>
   </div>
 </header>
 

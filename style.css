@@ -25,7 +25,7 @@
   --glass-border: rgba(255,255,255,0.08);
 }
 *{box-sizing:border-box; margin:0; padding:0;}
-html{scroll-behavior:smooth;}
+html{scroll-behavior:smooth; overflow-x:hidden;}
 body{
   background:
     radial-gradient(1100px 600px at 12% -6%, rgba(0,217,255,0.09), transparent 60%),
@@ -42,6 +42,7 @@ a{color:inherit; text-decoration:none;}
 img{max-width:100%; display:block;}
 button, input, textarea{font-family:inherit;}
 button{background:none; border:none; cursor:pointer; color:inherit;}
+a, button{-webkit-tap-highlight-color:transparent;}
 ::selection{background:var(--amber); color:var(--asphalt);}
 :focus-visible{outline:2px solid var(--amber); outline-offset:3px; border-radius:4px;}
 
@@ -444,6 +445,7 @@ a.brand:hover{filter:brightness(1.18);}
   opacity:0; visibility:hidden; pointer-events:none;
   transition:opacity .3s ease, visibility .3s ease, backdrop-filter .3s ease;
   backdrop-filter:blur(0px);
+  overscroll-behavior:contain; /* stop a swipe on the backdrop from scrolling the page behind it on mobile */
 }
 .modal-backdrop.show{opacity:1; visibility:visible; pointer-events:auto; backdrop-filter:blur(8px);}
 .modal{
@@ -451,7 +453,8 @@ a.brand:hover{filter:brightness(1.18);}
   background:linear-gradient(180deg, rgba(24,32,50,0.92), rgba(14,19,30,0.92));
   backdrop-filter:blur(20px) saturate(150%); -webkit-backdrop-filter:blur(20px) saturate(150%);
   border:1px solid var(--glass-border); border-radius:var(--radius-lg);
-  padding:28px; width:100%; max-width:520px; max-height:88vh; overflow-y:auto;
+  padding:28px; width:100%; max-width:520px; max-height:88vh; max-height:88dvh; overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
   box-shadow:0 30px 70px -20px rgba(0,0,0,0.75), 0 0 60px -20px rgba(0,217,255,0.25);
   transform:scale(.92) translateY(18px); opacity:0;
   transition:transform .4s cubic-bezier(.34,1.56,.64,1), opacity .3s ease;
@@ -585,8 +588,16 @@ footer{border-top:1px solid var(--line); padding:50px 0 30px; margin-top:40px;}
 
 @media (max-width:860px){
   .nav-links{display:none;}
+  .nav-links.open{
+    display:flex; flex-direction:column; position:absolute; top:64px; right:16px; left:16px;
+    background:var(--asphalt-2); border:1px solid var(--line); padding:8px 18px; gap:0;
+    border-radius:var(--radius-md); box-shadow:0 20px 45px -15px rgba(0,0,0,0.65), 0 0 0 1px rgba(255,255,255,0.03);
+    animation:menuDrop .22s cubic-bezier(.16,1,.3,1) both; z-index:150;
+  }
+  .nav-links.open a{padding:14px 2px; border-bottom:1px solid rgba(255,255,255,0.07); font-size:15px;}
+  .nav-links.open a:last-child{border-bottom:none;}
   .nav-cta{display:none;} /* redundant with the hamburger menu's "Join Us" link + the hero's own CTA, and there's no room for it */
-  .menu-btn{display:block; width:44px; height:44px;} /* 44px meets the min. comfortable touch-target size */
+  .menu-btn{display:flex; align-items:center; justify-content:center; width:44px; height:44px; font-size:18px;} /* 44px meets the min. comfortable touch-target size */
   .about-grid{grid-template-columns:1fr;}
   .subteams{grid-template-columns:1fr 1fr;}
   .join-grid{grid-template-columns:1fr;}
@@ -603,18 +614,38 @@ footer{border-top:1px solid var(--line); padding:50px 0 30px; margin-top:40px;}
   /* iOS Safari auto-zooms on focus into any input under 16px — this keeps forms usable without that jump */
   .field input, .field textarea, .field select,
   .admin-toolbar input[type="text"], .admin-toolbar select{font-size:16px;}
+  .join-apply{padding:10px 16px;} /* comfortable tap target */
+  .post-image{height:180px;}
+  /* heavy backdrop-filter blur is expensive on mobile GPUs and shows up as scroll jank —
+     the modal keeps its full blur since it isn't scrolling content behind it */
+  .subteam-card, .announce-card, .join-card, .team-card, .post, .app-card, .admin-gate-card{
+    backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
+  }
+  header, .ticker, .marquee{backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);}
 }
+@keyframes menuDrop{from{opacity:0; transform:translateY(-8px);} to{opacity:1; transform:translateY(0);}}
 @media (max-width:560px){
   .wrap{padding:0 18px;}
   .subteams{grid-template-columns:1fr;}
   .team-grid{grid-template-columns:1fr;}
   .ticker-inner{grid-template-columns:1fr 1fr;}
   .modal{padding:22px;}
+  .post-image{height:160px;}
   .aurora span{filter:blur(50px);}
   .aurora span:nth-child(1){width:340px; height:340px;}
   .aurora span:nth-child(2){width:380px; height:380px;}
   .aurora span:nth-child(3){width:320px; height:320px;}
 }
+@media (max-width:400px){
+  .wrap{padding:0 16px;}
+  .nav{padding:12px 16px;}
+  .nav-links.open{right:12px; left:12px;}
+  .hero-actions{flex-direction:column; align-items:stretch;}
+  .hero-actions .btn-primary, .hero-actions .btn-ghost{text-align:center;}
+  .modal{padding:18px;}
+}
+/* landscape notch phones (iPhone in landscape, etc.) — keep content clear of the curved edge */
+.wrap{padding-left:max(24px, env(safe-area-inset-left)); padding-right:max(24px, env(safe-area-inset-right));}
 @media (prefers-reduced-motion: reduce){
   html{scroll-behavior:auto;}
   /* Shrinking duration alone isn't enough for `infinite` animations (aurora,

@@ -18,21 +18,34 @@ const teamRef = collection(db, "team");
 const announcementsRef = collection(db, "announcements");
 
 // ---------- mobile menu ----------
+// class-driven (not inline styles) so CSS can animate the open/close, closes
+// itself on link tap / outside tap / Escape — none of which the old inline-style
+// toggle did, which on a phone meant the menu just sat open over the page.
 const menuBtn = document.getElementById('menuBtn');
 const navLinks = document.querySelector('.nav-links');
-menuBtn.addEventListener('click', () => {
-  const isOpen = navLinks.style.display === 'flex';
-  navLinks.style.display = isOpen ? 'none' : 'flex';
-  navLinks.style.flexDirection = 'column';
-  navLinks.style.position = 'absolute';
-  navLinks.style.top = '58px';
-  navLinks.style.right = '24px';
-  navLinks.style.background = '#121826';
-  navLinks.style.border = '1px solid #223049';
-  navLinks.style.padding = '16px 20px';
-  navLinks.style.gap = '14px';
-  navLinks.style.borderRadius = '12px';
+
+function closeMobileMenu(){
+  navLinks.classList.remove('open');
+  menuBtn.textContent = '☰';
+  menuBtn.setAttribute('aria-expanded', 'false');
+}
+function openMobileMenu(){
+  navLinks.classList.add('open');
+  menuBtn.textContent = '✕';
+  menuBtn.setAttribute('aria-expanded', 'true');
+}
+menuBtn.setAttribute('aria-expanded', 'false');
+menuBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  navLinks.classList.contains('open') ? closeMobileMenu() : openMobileMenu();
 });
+navLinks.querySelectorAll('a').forEach(a => a.addEventListener('click', closeMobileMenu));
+document.addEventListener('click', (e) => {
+  if(navLinks.classList.contains('open') && !navLinks.contains(e.target) && e.target !== menuBtn){
+    closeMobileMenu();
+  }
+});
+document.addEventListener('keydown', (e) => { if(e.key === 'Escape') closeMobileMenu(); });
 
 // ---------- start-light hero sequence ----------
 (function startLights(){
@@ -403,9 +416,15 @@ function showAuthedStep(){
   }
 }
 
+// mobile Safari/Chrome let the page scroll behind a fixed-position modal
+// unless the body itself is locked while it's open
+function lockBodyScroll(){ document.body.style.overflow = 'hidden'; }
+function unlockBodyScroll(){ document.body.style.overflow = ''; }
+
 function openTeamOrPostModal(action){
   pendingAction = action;
   modalBackdrop.classList.add('show');
+  lockBodyScroll();
   if(currentUser){
     showAuthedStep();
   }else{
@@ -426,7 +445,7 @@ const addTeamBtn = document.getElementById('addTeamBtn');
 if(addTeamBtn) addTeamBtn.addEventListener('click', () => openTeamOrPostModal('team'));
 newAnnouncementBtn.addEventListener('click', () => openTeamOrPostModal('announcement'));
 
-function closeModal(){ modalBackdrop.classList.remove('show'); }
+function closeModal(){ modalBackdrop.classList.remove('show'); unlockBodyScroll(); }
 document.getElementById('cancelSignIn').addEventListener('click', closeModal);
 document.getElementById('cancelPost').addEventListener('click', closeModal);
 document.getElementById('cancelTeam').addEventListener('click', closeModal);
@@ -670,9 +689,10 @@ function openApplyModal(prefillVertical){
   applyMsg.textContent = '';
   applyMsg.className = 'form-msg';
   applyModalBackdrop.classList.add('show');
+  lockBodyScroll();
   aName.focus();
 }
-function closeApplyModal(){ applyModalBackdrop.classList.remove('show'); }
+function closeApplyModal(){ applyModalBackdrop.classList.remove('show'); unlockBodyScroll(); }
 
 // nav + hero "Join The Team" buttons open the application form directly
 [document.getElementById('navJoinBtn'), document.getElementById('heroJoinBtn')].forEach(btn => {
