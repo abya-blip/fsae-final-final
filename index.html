@@ -25,7 +25,7 @@
 <!-- Lucide Icons -->
 <script src="https://unpkg.com/lucide@latest"></script>
 
-<link rel="stylesheet" href="style.css?v=5">
+<link rel="stylesheet" href="style.css?v=7">
 </head>
 <body>
 
@@ -293,9 +293,14 @@
     <div id="teamStep" style="display:none;">
       <div class="field"><label>Name</label><input type="text" id="mName" placeholder="Full name"></div>
       <div class="field"><label>Roll number</label><input type="text" id="mRoll" placeholder="e.g. 24ME1042"></div>
-      <div class="field"><label>Role / Title</label>
+      <div class="field" style="margin-bottom: 12px;">
+        <label class="checkbox-pill founder-toggle" style="display:inline-flex; width:auto; cursor:pointer;">
+          <input type="checkbox" id="mIsFounder"> 👑 Founder Status
+        </label>
+      </div>
+      <div class="field"><label>Technical Role / Title</label>
         <select id="mRole">
-          <option value="Founder">Founder</option>
+          <option value="Member" selected>Member</option>
           <option value="Suspension Lead">Suspension Lead</option>
           <option value="Aerodynamics Lead">Aerodynamics Lead</option>
           <option value="Powertrain Lead">Powertrain Lead</option>
@@ -303,8 +308,9 @@
           <option value="Business & Ops Lead">Business & Ops Lead</option>
           <option value="Chassis & Body Lead">Chassis & Body Lead</option>
           <option value="Manufacturing Lead">Manufacturing Lead</option>
+          <option value="Team Captain">Team Captain</option>
           <option value="Driver">Driver</option>
-          <option value="Member" selected>Member</option>
+          <option value="Founder">Founder (General)</option>
         </select>
       </div>
       <div class="field" id="mVerticalSingleWrap">
@@ -344,9 +350,14 @@
       <input type="hidden" id="editMId">
       <div class="field"><label>Name</label><input type="text" id="editMName" placeholder="Full name"></div>
       <div class="field"><label>Roll number</label><input type="text" id="editMRoll" placeholder="e.g. 24ME1042"></div>
-      <div class="field"><label>Role / Title</label>
+      <div class="field" style="margin-bottom: 12px;">
+        <label class="checkbox-pill founder-toggle" style="display:inline-flex; width:auto; cursor:pointer;">
+          <input type="checkbox" id="editMIsFounder"> 👑 Founder Status
+        </label>
+      </div>
+      <div class="field"><label>Technical Role / Title</label>
         <select id="editMRole">
-          <option value="Founder">Founder</option>
+          <option value="Member">Member</option>
           <option value="Suspension Lead">Suspension Lead</option>
           <option value="Aerodynamics Lead">Aerodynamics Lead</option>
           <option value="Powertrain Lead">Powertrain Lead</option>
@@ -354,8 +365,9 @@
           <option value="Business & Ops Lead">Business & Ops Lead</option>
           <option value="Chassis & Body Lead">Chassis & Body Lead</option>
           <option value="Manufacturing Lead">Manufacturing Lead</option>
+          <option value="Team Captain">Team Captain</option>
           <option value="Driver">Driver</option>
-          <option value="Member">Member</option>
+          <option value="Founder">Founder (General)</option>
         </select>
       </div>
       <div class="field">
@@ -458,6 +470,6 @@
      happened, which is what left the preloader up forever. script.js and
      member.js also guard against this themselves now, but the static tag is
      what makes the timing correct in the first place. -->
-<script type="module" src="script.js?v=5"></script>
+<script type="module" src="script.js?v=7"></script>
 </body>
 </html>

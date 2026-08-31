@@ -12,7 +12,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/lucide@latest"></script>
 
-<link rel="stylesheet" href="style.css?v=5">
+<link rel="stylesheet" href="style.css?v=7">
 <style>
   .profile-wrap { padding-top: 120px; min-height: 80vh; max-width: 900px; margin: 0 auto; }
   .back-link { display: inline-flex; align-items: center; gap: 8px; color: var(--text-secondary); margin-bottom: 40px; transition: color 0.2s; font-weight: 500; }
@@ -108,9 +108,14 @@
     <div>
       <div class="field"><label>Name</label><input type="text" id="profName" placeholder="Full name"></div>
       <div class="field"><label>Roll number</label><input type="text" id="profRoll" placeholder="e.g. 24ME1042"></div>
-      <div class="field"><label>Role / Title</label>
+      <div class="field" style="margin-bottom: 12px;">
+        <label class="checkbox-pill founder-toggle" style="display:inline-flex; width:auto; cursor:pointer;">
+          <input type="checkbox" id="profIsFounder"> 👑 Founder Status
+        </label>
+      </div>
+      <div class="field"><label>Technical Role / Title</label>
         <select id="profRole">
-          <option value="Founder">Founder</option>
+          <option value="Member">Member</option>
           <option value="Suspension Lead">Suspension Lead</option>
           <option value="Aerodynamics Lead">Aerodynamics Lead</option>
           <option value="Powertrain Lead">Powertrain Lead</option>
@@ -118,8 +123,9 @@
           <option value="Business & Ops Lead">Business & Ops Lead</option>
           <option value="Chassis & Body Lead">Chassis & Body Lead</option>
           <option value="Manufacturing Lead">Manufacturing Lead</option>
+          <option value="Team Captain">Team Captain</option>
           <option value="Driver">Driver</option>
-          <option value="Member">Member</option>
+          <option value="Founder">Founder (General)</option>
         </select>
       </div>
       <div class="field">
@@ -171,6 +177,6 @@ if (window.matchMedia('(pointer: fine)').matches) {
 </script>
 <!-- Static module tag, not a dynamic import() — see the comment on the
      matching tag in index.html for why the difference matters. -->
-<script type="module" src="member.js?v=5"></script>
+<script type="module" src="member.js?v=7"></script>
 </body>
 </html>

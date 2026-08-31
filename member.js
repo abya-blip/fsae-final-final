@@ -76,16 +76,38 @@ async function loadMemberProfile() {
         ? `<img src="${m.photo}" alt="${escapeHtml(m.name)}">` 
         : escapeHtml((m.name || '?')[0].toUpperCase());
 
-      function getRoleBadgeClass(role) {
+      function getMemberBadgeClass(role) {
         if (!role) return 'ig-badge-member';
         const r = role.toLowerCase();
-        if (r === 'founder') return 'ig-badge-founder';
-        if (r.includes('lead')) return 'ig-badge-lead';
+        if (r.includes('founder')) return 'ig-badge-founder';
+        if (r.includes('lead') || r.includes('captain')) return 'ig-badge-lead';
         if (r.includes('driver')) return 'ig-badge-driver';
         return 'ig-badge-member';
       }
 
-      const roleClass = getRoleBadgeClass(m.role);
+      function renderProfileBadges(m) {
+        const isFounder = m.isFounder === true || (m.role && m.role.toLowerCase() === 'founder');
+        const role = m.role || '';
+        const rLower = role.toLowerCase();
+        const badges = [];
+
+        if (isFounder) {
+          badges.push(`<span class="ig-badge-founder">Founder</span>`);
+        }
+
+        if (role && rLower !== 'founder' && rLower !== 'member') {
+          const cleanRole = isFounder ? role.replace(/Founder\s*(&|\/|\+)?\s*/i, '').trim() : role;
+          if (cleanRole && cleanRole.toLowerCase() !== 'founder' && cleanRole.toLowerCase() !== 'member') {
+            badges.push(`<span class="${getMemberBadgeClass(cleanRole)}">${escapeHtml(cleanRole)}</span>`);
+          }
+        } else if (!isFounder) {
+          badges.push(`<span class="${getMemberBadgeClass(role)}">${escapeHtml(role || 'Member')}</span>`);
+        }
+
+        return badges.join(' ');
+      }
+
+      const badgesHtml = renderProfileBadges(m);
       
       // Convert "Saumang Swarup Sharma" -> "saumang_swarup_sharma"
       const handle = m.name ? m.name.replace(/\s+/g, '_').toLowerCase() : 'engineer';
@@ -102,7 +124,7 @@ async function loadMemberProfile() {
           <div class="ig-info">
             <div class="ig-top-row">
               <h1 class="ig-username">${escapeHtml(handle)}</h1>
-              <span class="${roleClass}">${escapeHtml(m.role || 'Member')}</span>
+              <div style="display:inline-flex; gap:8px; align-items:center; flex-wrap:wrap;">${badgesHtml}</div>
               ${editBtnHtml}
             </div>
             <div class="ig-stats-row">
@@ -146,6 +168,11 @@ function openEditProfileModal() {
   if (!activeMemberData || !editProfileBackdrop) return;
   document.getElementById('profName').value = activeMemberData.name || '';
   document.getElementById('profRoll').value = activeMemberData.rollNo || '';
+  
+  const isFounder = activeMemberData.isFounder === true || (activeMemberData.role && activeMemberData.role.toLowerCase().includes('founder'));
+  const profFounderCb = document.getElementById('profIsFounder');
+  if (profFounderCb) profFounderCb.checked = isFounder;
+
   document.getElementById('profRole').value = activeMemberData.role || 'Member';
   document.getElementById('profBio').value = activeMemberData.bio || '';
   const msg = document.getElementById('profMsg');
@@ -166,12 +193,17 @@ function closeEditProfileModal() {
 
 document.getElementById('closeEditProfileBtn')?.addEventListener('click', closeEditProfileModal);
 document.getElementById('cancelProfEdit')?.addEventListener('click', closeEditProfileModal);
+editProfileBackdrop?.addEventListener('click', (e) => {
+  if (e.target === editProfileBackdrop) closeEditProfileModal();
+});
 
 document.getElementById('saveProfEdit')?.addEventListener('click', async () => {
   if (!activeMemberId) return;
   const name = document.getElementById('profName').value.trim();
   const rollNo = document.getElementById('profRoll').value.trim();
-  const role = document.getElementById('profRole').value;
+  const isFounder = document.getElementById('profIsFounder')?.checked || false;
+  let role = document.getElementById('profRole').value;
+  if (isFounder && role === 'Member') { role = 'Founder'; }
   const bio = document.getElementById('profBio').value.trim();
   const checkBoxes = document.querySelectorAll('#profVerticals input[type="checkbox"]');
   const verticals = Array.from(checkBoxes).filter(cb => cb.checked).map(cb => cb.value);
@@ -196,6 +228,7 @@ document.getElementById('saveProfEdit')?.addEventListener('click', async () => {
     await updateDoc(doc(db, "team", activeMemberId), {
       name,
       rollNo,
+      isFounder,
       role,
       verticals,
       bio,

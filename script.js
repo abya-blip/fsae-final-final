@@ -310,11 +310,12 @@ document.addEventListener('click', function(event) {
           // the click before that happens, regardless of what Swiper does
           // with it afterward.
 
-function getRolePriority(role) {
-  if (!role) return 99;
-  const r = role.toLowerCase();
-  if (r === 'founder') return 1;
-  if (r.includes('lead')) return 2;
+function getMemberPriority(m) {
+  if (!m) return 99;
+  const isFounder = m.isFounder === true || (m.role && m.role.toLowerCase().includes('founder'));
+  if (isFounder) return 1;
+  const r = (m.role || '').toLowerCase();
+  if (r.includes('lead') || r.includes('captain')) return 2;
   if (r.includes('driver')) return 3;
   return 4;
 }
@@ -322,10 +323,32 @@ function getRolePriority(role) {
 function getRoleBadgeClass(role) {
   if (!role) return '';
   const r = role.toLowerCase();
-  if (r === 'founder') return 'founder';
-  if (r.includes('lead')) return 'lead';
+  if (r.includes('founder')) return 'founder';
+  if (r.includes('lead') || r.includes('captain')) return 'lead';
   if (r.includes('driver')) return 'driver';
   return '';
+}
+
+function renderMemberBadges(m) {
+  const isFounder = m.isFounder === true || (m.role && m.role.toLowerCase() === 'founder');
+  const role = m.role || '';
+  const rLower = role.toLowerCase();
+  const badges = [];
+
+  if (isFounder) {
+    badges.push(`<span class="team-badge founder">Founder</span>`);
+  }
+
+  if (role && rLower !== 'founder' && rLower !== 'member') {
+    const cleanRole = isFounder ? role.replace(/Founder\s*(&|\/|\+)?\s*/i, '').trim() : role;
+    if (cleanRole && cleanRole.toLowerCase() !== 'founder' && cleanRole.toLowerCase() !== 'member') {
+      badges.push(`<span class="team-badge ${getRoleBadgeClass(cleanRole)}">${escapeHtml(cleanRole)}</span>`);
+    }
+  } else if (!isFounder && role && rLower !== 'member') {
+    badges.push(`<span class="team-badge ${getRoleBadgeClass(role)}">${escapeHtml(role)}</span>`);
+  }
+
+  return badges.length ? `<div class="team-badges-wrap">${badges.join('')}</div>` : '';
 }
 
 let latestTeamMembers = [];
@@ -339,9 +362,7 @@ function renderTeamGrid() {
   
   teamGrid.innerHTML = latestTeamMembers.map(m => {
     const verticals = Array.isArray(m.verticals) ? m.verticals : (m.vertical ? [m.vertical] : []);
-    const badgeHtml = (m.role && m.role !== 'Member') 
-      ? `<span class="team-badge ${getRoleBadgeClass(m.role)}">${escapeHtml(m.role)}</span>` 
-      : '';
+    const badgesHtml = renderMemberBadges(m);
     const editBtnHtml = currentUser 
       ? `<button class="team-card-edit-btn" data-id="${m.dbKey}" title="Edit tags & details"><i data-lucide="edit-3" style="width:12px;height:12px;"></i> Edit</button>` 
       : '';
@@ -352,7 +373,7 @@ function renderTeamGrid() {
         ${editBtnHtml}
         <div class="team-avatar">${m.photo ? `<img src="${m.photo}">` : escapeHtml((m.name || '?')[0].toUpperCase())}</div>
         <h3 class="team-name">${escapeHtml(m.name)}</h3>
-        ${badgeHtml}
+        ${badgesHtml}
         <div class="team-verticals">${verticals.map(v => `<span class="team-tag">${escapeHtml(v)}</span>`).join('')}</div>
       </div>
     </div>`;
@@ -369,7 +390,7 @@ onSnapshot(query(teamRef, orderBy('createdAt', 'asc')), (snapshot) => {
   });
   
   latestTeamMembers.sort((a, b) => {
-    const diff = getRolePriority(a.role) - getRolePriority(b.role);
+    const diff = getMemberPriority(a) - getMemberPriority(b);
     if (diff !== 0) return diff;
     return (a.name || '').localeCompare(b.name || '');
   });
@@ -450,7 +471,14 @@ function openEditMemberModal(memberId) {
   document.getElementById('editMId').value = memberId;
   document.getElementById('editMName').value = member.name || '';
   document.getElementById('editMRoll').value = member.rollNo || '';
-  document.getElementById('editMRole').value = member.role || 'Member';
+  
+  const isFounder = member.isFounder === true || (member.role && member.role.toLowerCase().includes('founder'));
+  const founderCb = document.getElementById('editMIsFounder');
+  if (founderCb) founderCb.checked = isFounder;
+  
+  let roleVal = member.role || 'Member';
+  // If it was stored as 'Founder', but options have 'Founder', keep it, else select role
+  document.getElementById('editMRole').value = roleVal;
   document.getElementById('editMBio').value = member.bio || '';
   const editMsg = document.getElementById('editTeamMsg');
   if (editMsg) { editMsg.textContent = ''; editMsg.className = 'form-msg'; }
@@ -492,47 +520,83 @@ document.getElementById('publishPost').addEventListener('click', async () => {
 });
 
 const mRole = document.getElementById('mRole');
+const mIsFounder = document.getElementById('mIsFounder');
 const mVerticalSingleWrap = document.getElementById('mVerticalSingleWrap');
 const mVerticalMultiWrap = document.getElementById('mVerticalMultiWrap');
 const mVerticalMultiBoxes = document.querySelectorAll('#mVerticalMulti input[type="checkbox"]');
 
-function isMultiVerticalRole(role) {
-  if (!role) return false;
-  const r = role.toLowerCase();
-  return r === 'founder' || r.includes('lead');
-}
-
-if(mRole) mRole.addEventListener('change', () => {
-  if(isMultiVerticalRole(mRole.value)){ 
+function checkAddMemberVerticalMode() {
+  const isFounderChecked = mIsFounder ? mIsFounder.checked : false;
+  const roleVal = mRole ? mRole.value.toLowerCase() : '';
+  const isMulti = isFounderChecked || roleVal.includes('founder') || roleVal.includes('lead') || roleVal.includes('captain');
+  if(isMulti){ 
     mVerticalSingleWrap.style.display = 'none'; 
     mVerticalMultiWrap.style.display = 'block'; 
   } else { 
     mVerticalMultiWrap.style.display = 'none'; 
     mVerticalSingleWrap.style.display = 'block'; 
   }
-});
+}
+
+if(mRole) mRole.addEventListener('change', checkAddMemberVerticalMode);
+if(mIsFounder) mIsFounder.addEventListener('change', checkAddMemberVerticalMode);
 
 document.getElementById('submitTeam').addEventListener('click', async () => {
   const name = document.getElementById('mName').value.trim(); 
   const rollNo = document.getElementById('mRoll').value.trim(); 
-  const role = mRole.value; 
+  const isFounder = mIsFounder ? mIsFounder.checked : false;
+  let role = mRole.value; 
+  if (isFounder && role === 'Member') { role = 'Founder'; }
   const bio = document.getElementById('mBio').value.trim();
-  const multiMode = isMultiVerticalRole(role) || (mVerticalMultiWrap && mVerticalMultiWrap.style.display === 'block');
-  const verticals = multiMode 
+  const isMulti = isFounder || role.toLowerCase().includes('founder') || role.toLowerCase().includes('lead') || (mVerticalMultiWrap && mVerticalMultiWrap.style.display === 'block');
+  const verticals = isMulti 
     ? Array.from(mVerticalMultiBoxes).filter(cb => cb.checked).map(cb => cb.value) 
     : (document.getElementById('mVertical').value ? [document.getElementById('mVertical').value] : []);
-  if(!name || !rollNo || verticals.length === 0) return;
+  const msg = document.getElementById('teamMsg');
+  const submitBtn = document.getElementById('submitTeam');
+
+  if(!name || !rollNo || verticals.length === 0) {
+    if (msg) {
+      msg.textContent = 'Please provide name, roll number, and at least one vertical.';
+      msg.className = 'form-msg err';
+    }
+    return;
+  }
+  
+  if (submitBtn) submitBtn.disabled = true;
+  if (msg) { msg.textContent = 'Adding to roster...'; msg.className = 'form-msg'; }
+
   try{ 
-    await addDoc(teamRef, { name, rollNo, verticals, role, bio, photo: pendingMemberPhoto || null, createdAt: serverTimestamp(), addedByUid: currentUser.uid }); 
+    await addDoc(teamRef, { 
+      name, 
+      rollNo, 
+      isFounder,
+      verticals, 
+      role, 
+      bio, 
+      photo: pendingMemberPhoto || null, 
+      createdAt: serverTimestamp(), 
+      addedByUid: currentUser?.uid || null 
+    }); 
     modalBackdrop.classList.remove('show'); 
-  }catch(err){}
+  } catch(err){
+    console.error("Add team error:", err);
+    if (msg) {
+      msg.textContent = 'Failed to add member: ' + (err.message || err.code);
+      msg.className = 'form-msg err';
+    }
+  } finally {
+    if (submitBtn) submitBtn.disabled = false;
+  }
 });
 
 document.getElementById('saveEditTeam')?.addEventListener('click', async () => {
   const id = document.getElementById('editMId').value;
   const name = document.getElementById('editMName').value.trim();
   const rollNo = document.getElementById('editMRoll').value.trim();
-  const role = document.getElementById('editMRole').value;
+  const isFounder = document.getElementById('editMIsFounder')?.checked || false;
+  let role = document.getElementById('editMRole').value;
+  if (isFounder && role === 'Member') { role = 'Founder'; }
   const bio = document.getElementById('editMBio').value.trim();
   const editBoxes = document.querySelectorAll('#editMVerticalMulti input[type="checkbox"]');
   const verticals = Array.from(editBoxes).filter(cb => cb.checked).map(cb => cb.value);
@@ -557,6 +621,7 @@ document.getElementById('saveEditTeam')?.addEventListener('click', async () => {
     await updateDoc(doc(db, "team", id), {
       name,
       rollNo,
+      isFounder,
       role,
       verticals,
       bio,

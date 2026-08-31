@@ -1,0 +1,40 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Team members & engineer profiles
+    // Anyone can view the roster; authenticated team members can add, edit tags/roles, and delete.
+    match /team/{memberId} {
+      allow read: if true;
+      allow create, update, delete: if request.auth != null;
+    }
+
+    // Recruitment Applications
+    // Anyone can apply (submit); only authenticated team members can view or manage submissions.
+    match /applications/{applicationId} {
+      allow create: if true;
+      allow read, update, delete: if request.auth != null;
+    }
+
+    // Blog / Build Log Posts
+    // Anyone can read blog posts; authenticated team members can create, edit, or delete.
+    match /posts/{postId} {
+      allow read: if true;
+      allow create, update, delete: if request.auth != null;
+    }
+
+    // Team Announcements
+    // Anyone can view announcements; authenticated team members can publish or remove.
+    match /announcements/{announcementId} {
+      allow read: if true;
+      allow create, update, delete: if request.auth != null;
+    }
+
+    // Roadmap Status Progress
+    // Anyone can read progress; authenticated team members can update milestone stages.
+    match /roadmap/{docId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+  }
+}
