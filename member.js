@@ -1,6 +1,6 @@
 import { auth, db } from "./firebase-init.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-import { doc, getDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+import { doc, getDoc, updateDoc, collection, query, where, orderBy, getDocs, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 // Utility for safe HTML output
 function escapeHtml(str){
@@ -12,14 +12,41 @@ function escapeHtml(str){
 let currentUser = null;
 let activeMemberId = null;
 let activeMemberData = null;
+let pendingLogPhoto = null;
 
 onAuthStateChanged(auth, (user) => {
   currentUser = user;
-  // Re-render if profile already loaded so edit button visibility matches auth state
+  // Re-render if profile already loaded so edit button and add-log button visibility matches auth state
   if (activeMemberId) {
     loadMemberProfile();
   }
 });
+
+async function fetchEngineerLogs(memberId) {
+  try {
+    const logsRef = collection(db, "engineer_logs");
+    const q = query(logsRef, where("memberId", "==", memberId), orderBy("createdAt", "desc"));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch (e) {
+    console.warn("Could not fetch engineer logs with compound query, falling back to simple query:", e);
+    try {
+      const logsRef = collection(db, "engineer_logs");
+      const q = query(logsRef, where("memberId", "==", memberId));
+      const snapshot = await getDocs(q);
+      const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      docs.sort((a, b) => {
+        const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : (a.createdAt ? new Date(a.createdAt).getTime() : 0);
+        const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
+        return timeB - timeA;
+      });
+      return docs;
+    } catch (err) {
+      console.error("Error fetching logs:", err);
+      return [];
+    }
+  }
+}
 
 async function loadMemberProfile() {
   const urlParams = new URLSearchParams(window.location.search);
@@ -38,24 +65,12 @@ async function loadMemberProfile() {
   const contentDiv = document.getElementById('profileContent');
 
   if (!memberId || memberId === 'undefined' || memberId === 'null') {
-    let debugHTML = '';
-    try {
-      const clickDebugRaw = sessionStorage.getItem('lastTeamClickDebug');
-      sessionStorage.removeItem('lastTeamClickDebug'); // never shown twice
-      const debugInfo = {
-        currentURL: window.location.href,
-        referrer: document.referrer || '(none)',
-        lastRosterClick: clickDebugRaw ? JSON.parse(clickDebugRaw) : '(no click recorded this session)',
-      };
-      debugHTML = `<pre style="text-align:left; max-width:600px; margin:24px auto 0; padding:16px; background:#111; border:1px solid #333; border-radius:8px; font-size:12px; color:#8f8; overflow:auto;">${escapeHtml(JSON.stringify(debugInfo, null, 2))}</pre>`;
-    } catch (e) {}
     contentDiv.innerHTML = `
       <div class="empty-state" style="text-align:center;">
         <i data-lucide="alert-circle" size="48" style="color:var(--accent); margin-bottom:16px;"></i>
         <h2>Profile Not Found</h2>
         <p style="margin-bottom: 24px;">No valid engineer ID detected in the URL. Please return to the Roster and click a profile card.</p>
         <a href="index.html#team" class="btn-primary">Return to Roster</a>
-        ${debugHTML}
       </div>`;
     lucide.createIcons();
     return;
@@ -116,6 +131,37 @@ async function loadMemberProfile() {
         ? `<button id="profileEditBtn" class="profile-edit-btn"><i data-lucide="edit-3" size="14"></i> Edit Profile & Tags</button>` 
         : '';
 
+      // Check if engineer is a Founder or holds a Lead/Captain title
+      const isFounderOrLead = (m.isFounder === true) || 
+        (m.role && (
+          m.role.toLowerCase().includes('founder') || 
+          m.role.toLowerCase().includes('lead') || 
+          m.role.toLowerCase().includes('captain')
+        ));
+
+      let logsSectionHtml = '';
+      if (isFounderOrLead) {
+        const addLogBtnHtml = currentUser 
+          ? `<button id="openAddLogBtn" class="btn-secondary btn-small magnetic-el"><i data-lucide="plus" size="14"></i> Add Technical Log</button>` 
+          : '';
+
+        logsSectionHtml = `
+          <div class="ig-divider"><div class="ig-tab"><i data-lucide="cpu" size="14"></i> TECHNICAL BUILD LOGS</div></div>
+          
+          <div class="logs-section-header">
+            <div>
+              <h3 style="font-size:18px; margin:0 0 4px;">Engineer Portfolio Logs</h3>
+              <p style="color:var(--text-secondary); font-size:13px; margin:0;">Subsystem architecture, CAD simulations, and fabrication milestones by ${escapeHtml(m.name)}.</p>
+            </div>
+            ${addLogBtnHtml}
+          </div>
+
+          <div class="logs-list" id="engineerLogsList">
+            <div class="empty-state" style="padding: 30px;"><i data-lucide="loader-2" class="spin"></i> Loading engineer logs...</div>
+          </div>
+        `;
+      }
+
       contentDiv.innerHTML = `
         <div class="ig-profile-header">
           <div class="ig-story-ring">
@@ -138,16 +184,54 @@ async function loadMemberProfile() {
           </div>
         </div>
 
-        <div class="ig-divider"><div class="ig-tab"><i data-lucide="grid" size="14"></i> ENGINEER LOGS</div></div>
-        
-        <div class="empty-state" style="padding-top: 40px;">
-          <i data-lucide="lock" size="32" style="margin-bottom: 16px; opacity: 0.5;"></i>
-          <p>No technical logs published by this engineer yet.</p>
-        </div>
+        ${logsSectionHtml}
       `;
       lucide.createIcons();
 
       document.getElementById('profileEditBtn')?.addEventListener('click', openEditProfileModal);
+      document.getElementById('openAddLogBtn')?.addEventListener('click', openAddLogModal);
+
+      // If Founder or Lead, populate real logs from Firestore
+      if (isFounderOrLead) {
+        const logs = await fetchEngineerLogs(memberId);
+        const logsContainer = document.getElementById('engineerLogsList');
+        if (logsContainer) {
+          if (logs.length === 0) {
+            logsContainer.innerHTML = `
+              <div class="empty-state" style="padding: 40px 20px;">
+                <i data-lucide="file-text" size="32" style="margin-bottom: 12px; opacity: 0.5;"></i>
+                <p style="margin-bottom: 8px;">No technical logs published by this lead yet.</p>
+                ${currentUser ? '<p style="font-size:13px; color:var(--text-secondary);">Click "Add Technical Log" above to record your first milestone.</p>' : ''}
+              </div>
+            `;
+          } else {
+            logsContainer.innerHTML = logs.map(l => {
+              let dateStr = 'Recent Milestone';
+              if (l.createdAt?.toDate) {
+                dateStr = l.createdAt.toDate().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+              } else if (l.createdAt) {
+                dateStr = new Date(l.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+              }
+              const photoHtml = l.photo 
+                ? `<div class="log-img-wrap"><img src="${l.photo}" alt="${escapeHtml(l.title)}" loading="lazy"></div>` 
+                : '';
+              return `
+                <div class="engineer-log-card">
+                  <div class="log-top">
+                    <div class="log-title">${escapeHtml(l.title)}</div>
+                    <span class="log-badge">${escapeHtml(l.tag || 'Engineering')}</span>
+                  </div>
+                  <div class="log-date"><i data-lucide="calendar" size="12" style="display:inline-block; vertical-align:-1px; margin-right:4px;"></i> ${escapeHtml(dateStr)}</div>
+                  <div class="log-body">${escapeHtml(l.body)}</div>
+                  ${photoHtml}
+                </div>
+              `;
+            }).join('');
+          }
+          lucide.createIcons();
+        }
+      }
+
     } else {
       contentDiv.innerHTML = `
         <div class="empty-state" style="text-align:center;">
@@ -155,6 +239,7 @@ async function loadMemberProfile() {
           <p style="margin-bottom: 24px;">This engineer is not registered in the current roster database.</p>
           <a href="index.html#team" class="btn-primary">Return to Roster</a>
         </div>`;
+      lucide.createIcons();
     }
   } catch (error) {
     console.error("Error loading profile:", error);
@@ -162,6 +247,7 @@ async function loadMemberProfile() {
   }
 }
 
+/* --- EDIT PROFILE MODAL --- */
 const editProfileBackdrop = document.getElementById('editProfileBackdrop');
 
 function openEditProfileModal() {
@@ -241,6 +327,103 @@ document.getElementById('saveProfEdit')?.addEventListener('click', async () => {
     console.error('Error saving profile changes:', err);
     if (msg) {
       msg.textContent = 'Failed to save changes: ' + (err.message || err.code);
+      msg.className = 'form-msg err';
+    }
+  } finally {
+    if (saveBtn) saveBtn.disabled = false;
+  }
+});
+
+/* --- ADD TECHNICAL LOG MODAL --- */
+const addLogBackdrop = document.getElementById('addLogBackdrop');
+const logPhotoInput = document.getElementById('logPhoto');
+const logPhotoPreview = document.getElementById('logPhotoPreview');
+const logPhotoPreviewImg = document.getElementById('logPhotoPreviewImg');
+const logPhotoRemove = document.getElementById('logPhotoRemove');
+
+if (logPhotoInput) {
+  logPhotoInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      pendingLogPhoto = ev.target.result;
+      if (logPhotoPreviewImg) logPhotoPreviewImg.src = pendingLogPhoto;
+      if (logPhotoPreview) logPhotoPreview.style.display = 'flex';
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+if (logPhotoRemove) {
+  logPhotoRemove.addEventListener('click', () => {
+    pendingLogPhoto = null;
+    if (logPhotoInput) logPhotoInput.value = '';
+    if (logPhotoPreview) logPhotoPreview.style.display = 'none';
+  });
+}
+
+function openAddLogModal() {
+  if (!addLogBackdrop) return;
+  document.getElementById('logTitle').value = '';
+  document.getElementById('logBody').value = '';
+  pendingLogPhoto = null;
+  if (logPhotoInput) logPhotoInput.value = '';
+  if (logPhotoPreview) logPhotoPreview.style.display = 'none';
+  const msg = document.getElementById('logMsg');
+  if (msg) { msg.textContent = ''; msg.className = 'form-msg'; }
+  addLogBackdrop.classList.add('show');
+}
+
+function closeAddLogModal() {
+  if (addLogBackdrop) addLogBackdrop.classList.remove('show');
+}
+
+document.getElementById('closeAddLogBtn')?.addEventListener('click', closeAddLogModal);
+document.getElementById('cancelAddLog')?.addEventListener('click', closeAddLogModal);
+addLogBackdrop?.addEventListener('click', (e) => {
+  if (e.target === addLogBackdrop) closeAddLogModal();
+});
+
+document.getElementById('saveAddLog')?.addEventListener('click', async () => {
+  if (!activeMemberId) return;
+  const title = document.getElementById('logTitle').value.trim();
+  const tag = document.getElementById('logTag').value;
+  const body = document.getElementById('logBody').value.trim();
+  const msg = document.getElementById('logMsg');
+  const saveBtn = document.getElementById('saveAddLog');
+
+  if (!title || !body) {
+    if (msg) {
+      msg.textContent = 'Please provide both a log title and engineering notes.';
+      msg.className = 'form-msg err';
+    }
+    return;
+  }
+
+  if (saveBtn) saveBtn.disabled = true;
+  if (msg) {
+    msg.textContent = 'Publishing technical log...';
+    msg.className = 'form-msg';
+  }
+
+  try {
+    await addDoc(collection(db, "engineer_logs"), {
+      memberId: activeMemberId,
+      authorName: activeMemberData?.name || 'Engineer',
+      title,
+      tag,
+      body,
+      photo: pendingLogPhoto || null,
+      createdAt: serverTimestamp(),
+      authorUid: currentUser?.uid || null
+    });
+    closeAddLogModal();
+    await loadMemberProfile();
+  } catch (err) {
+    console.error('Error publishing technical log:', err);
+    if (msg) {
+      msg.textContent = 'Failed to publish log: ' + (err.message || err.code);
       msg.className = 'form-msg err';
     }
   } finally {

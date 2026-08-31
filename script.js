@@ -47,8 +47,6 @@ onWindowReady(() => {
       );
     });
 
-    gsap.to("#scrollProgress", { scaleX: 1, ease: "none", scrollTrigger: { scrub: 0.3 } });
-
     gsap.to('.glow-1', { backgroundColor: 'rgba(0, 240, 255, 0.15)', scrollTrigger: { trigger: '#about', start: 'top center', end: 'bottom center', scrub: true } });
     gsap.to('.glow-2', { backgroundColor: 'rgba(122, 56, 254, 0.15)', scrollTrigger: { trigger: '#team', start: 'top center', end: 'bottom center', scrub: true } });
     });
@@ -664,3 +662,154 @@ submitApplyBtn?.addEventListener('click', async () => {
   try{ await addDoc(applicationsRef, { name, email, branch, roll, vertical, why, createdAt: serverTimestamp() }); applyMsg.textContent = 'Application received!'; applyMsg.className = 'form-msg ok'; setTimeout(() => { applyModalBackdrop.classList.remove('show'); submitApplyBtn.disabled = false; }, 1100); }
   catch(err){ applyMsg.textContent = 'Submission error.'; applyMsg.className = 'form-msg err'; submitApplyBtn.disabled = false; }
 });
+
+/* --- WORKSHOP BUILD GALLERY & LIGHTBOX --- */
+const DEFAULT_GALLERY_ITEMS = [
+  {
+    id: 'g1',
+    title: 'Formula Student Race Car Concept Render',
+    category: 'chassis',
+    tag: 'Chassis & Aero',
+    src: 'wallhaven-kwqym1_3840x2160.jpg'
+  },
+  {
+    id: 'g2',
+    title: 'Chromoly 4130 Spaceframe Chassis Design & FEA',
+    category: 'chassis',
+    tag: 'Chassis',
+    src: 'https://images.unsplash.com/photo-1580273916550-e323be2ae537?auto=format&fit=crop&w=1200&q=80'
+  },
+  {
+    id: 'g3',
+    title: 'High-Performance Engine Packaging & Custom Intake',
+    category: 'powertrain',
+    tag: 'Powertrain',
+    src: 'https://images.unsplash.com/photo-1517524008697-84bbe3c3fd98?auto=format&fit=crop&w=1200&q=80'
+  },
+  {
+    id: 'g4',
+    title: 'Custom CAN-Bus Wiring Harness & Telemetry Microcontroller',
+    category: 'electronics',
+    tag: 'Electronics',
+    src: 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1200&q=80'
+  },
+  {
+    id: 'g5',
+    title: 'TIG Welded Upright & Suspension Jigging',
+    category: 'powertrain',
+    tag: 'Fabrication',
+    src: 'https://images.unsplash.com/photo-1504917599217-d4dc5ebe6122?auto=format&fit=crop&w=1200&q=80'
+  },
+  {
+    id: 'g6',
+    title: 'Double Wishbone Pushrod Suspension Geometry',
+    category: 'workshop',
+    tag: 'Suspension',
+    src: 'https://images.unsplash.com/photo-1486006920555-c77dce18193b?auto=format&fit=crop&w=1200&q=80'
+  },
+  {
+    id: 'g7',
+    title: 'IIPE Racing Garage Workshop & Tooling Station',
+    category: 'workshop',
+    tag: 'Workshop & Crew',
+    src: 'https://images.unsplash.com/photo-1617814076367-b759c7d7e738?auto=format&fit=crop&w=1200&q=80'
+  },
+  {
+    id: 'g8',
+    title: 'Telemetry Sensors & DAQ Logging Dashboard',
+    category: 'electronics',
+    tag: 'Telemetry',
+    src: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80'
+  }
+];
+
+let activeGalleryFilter = 'all';
+let currentFilteredGallery = [...DEFAULT_GALLERY_ITEMS];
+let currentLightboxIndex = 0;
+
+const galleryGrid = document.getElementById('galleryGrid');
+const galleryLightbox = document.getElementById('galleryLightbox');
+const lightboxImg = document.getElementById('lightboxImg');
+const lightboxTag = document.getElementById('lightboxTag');
+const lightboxTitle = document.getElementById('lightboxTitle');
+
+function renderGalleryGrid() {
+  if (!galleryGrid) return;
+  currentFilteredGallery = activeGalleryFilter === 'all' 
+    ? DEFAULT_GALLERY_ITEMS 
+    : DEFAULT_GALLERY_ITEMS.filter(item => item.category === activeGalleryFilter);
+
+  if (currentFilteredGallery.length === 0) {
+    galleryGrid.innerHTML = `<div class="empty-state" style="grid-column: 1/-1; text-align:center;">No media in this category yet.</div>`;
+    return;
+  }
+
+  galleryGrid.innerHTML = currentFilteredGallery.map((item, idx) => `
+    <div class="gallery-card magnetic-el" data-idx="${idx}">
+      <img src="${item.src}" alt="${escapeHtml(item.title)}" loading="lazy">
+      <div class="gallery-card-overlay">
+        <span class="gallery-tag">${escapeHtml(item.tag)}</span>
+        <div class="gallery-title">${escapeHtml(item.title)}</div>
+      </div>
+    </div>
+  `).join('');
+
+  document.querySelectorAll('.gallery-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const idx = parseInt(card.dataset.idx, 10);
+      openLightbox(idx);
+    });
+  });
+}
+
+function openLightbox(index) {
+  if (!galleryLightbox || index < 0 || index >= currentFilteredGallery.length) return;
+  currentLightboxIndex = index;
+  const item = currentFilteredGallery[index];
+  if (lightboxImg) lightboxImg.src = item.src;
+  if (lightboxTag) lightboxTag.textContent = item.tag;
+  if (lightboxTitle) lightboxTitle.textContent = item.title;
+  galleryLightbox.classList.add('show');
+}
+
+function closeLightbox() {
+  if (galleryLightbox) galleryLightbox.classList.remove('show');
+}
+
+function showNextLightboxImg() {
+  if (currentFilteredGallery.length === 0) return;
+  currentLightboxIndex = (currentLightboxIndex + 1) % currentFilteredGallery.length;
+  openLightbox(currentLightboxIndex);
+}
+
+function showPrevLightboxImg() {
+  if (currentFilteredGallery.length === 0) return;
+  currentLightboxIndex = (currentLightboxIndex - 1 + currentFilteredGallery.length) % currentFilteredGallery.length;
+  openLightbox(currentLightboxIndex);
+}
+
+document.getElementById('lightboxCloseBtn')?.addEventListener('click', closeLightbox);
+document.getElementById('lightboxNextBtn')?.addEventListener('click', showNextLightboxImg);
+document.getElementById('lightboxPrevBtn')?.addEventListener('click', showPrevLightboxImg);
+
+galleryLightbox?.addEventListener('click', (e) => {
+  if (e.target === galleryLightbox) closeLightbox();
+});
+
+window.addEventListener('keydown', (e) => {
+  if (!galleryLightbox || !galleryLightbox.classList.contains('show')) return;
+  if (e.key === 'Escape') closeLightbox();
+  if (e.key === 'ArrowRight') showNextLightboxImg();
+  if (e.key === 'ArrowLeft') showPrevLightboxImg();
+});
+
+document.querySelectorAll('.gallery-filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.gallery-filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeGalleryFilter = btn.dataset.filter || 'all';
+    renderGalleryGrid();
+  });
+});
+
+renderGalleryGrid();

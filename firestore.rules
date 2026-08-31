@@ -36,5 +36,18 @@ service cloud.firestore {
       allow read: if true;
       allow write: if request.auth != null;
     }
+
+    // Engineer Technical Logs (Profile Portfolio)
+    // Anyone can view logs; authenticated team members can publish or manage logs.
+    match /engineer_logs/{logId} {
+      allow read: if true;
+      allow create, update, delete: if request.auth != null;
+    }
+
+    // Media & Workshop Gallery
+    match /gallery/{mediaId} {
+      allow read: if true;
+      allow create, update, delete: if request.auth != null;
+    }
   }
 }

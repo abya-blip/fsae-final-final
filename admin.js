@@ -21,9 +21,7 @@ const applicationsRef = collection(db, "applications");
 // CSS :hover{transform:...} rules on these same buttons.
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-if(!reducedMotion){
-  scroll(animate(".scroll-progress", { scaleX: [0, 1] }, { ease: "linear" }));
-}
+
 
 function addPressFeedback(selector){
   if(reducedMotion) return;

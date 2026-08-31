@@ -12,7 +12,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/lucide@latest"></script>
 
-<link rel="stylesheet" href="style.css?v=7">
+<link rel="stylesheet" href="style.css?v=8">
 <style>
   .profile-wrap { padding-top: 120px; min-height: 80vh; max-width: 900px; margin: 0 auto; }
   .back-link { display: inline-flex; align-items: center; gap: 8px; color: var(--text-secondary); margin-bottom: 40px; transition: color 0.2s; font-weight: 500; }
@@ -149,6 +149,43 @@
   </div>
 </div>
 
+<!-- Add Engineer Log Modal -->
+<div class="modal-backdrop" id="addLogBackdrop">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 class="modal-title">New Technical Log Entry</h3>
+      <button class="close-modal-btn" id="closeAddLogBtn">&times;</button>
+    </div>
+    <div>
+      <div class="field"><label>Log Title</label><input type="text" id="logTitle" placeholder="e.g. Front Wing CFD Simulation Run #3"></div>
+      <div class="field">
+        <label>Discipline / Subsystem Tag</label>
+        <select id="logTag">
+          <option value="Chassis & Body">Chassis & Body</option>
+          <option value="Aerodynamics">Aerodynamics</option>
+          <option value="Powertrain">Powertrain</option>
+          <option value="Suspension & Steering">Suspension & Steering</option>
+          <option value="Electronics & Telemetry">Electronics & Telemetry</option>
+          <option value="Manufacturing & Fab">Manufacturing & Fab</option>
+          <option value="Simulation & CAD">Simulation & CAD</option>
+          <option value="Competition & Rules">Competition & Rules</option>
+        </select>
+      </div>
+      <div class="field"><label>Engineering Notes / Details</label><textarea id="logBody" placeholder="Detail design choices, test data, calculations, or challenges solved..."></textarea></div>
+      <div class="field">
+        <label>Photo / Schematic (optional)</label>
+        <input type="file" id="logPhoto" accept="image/*">
+        <div class="photo-preview" id="logPhotoPreview" style="display:none;"><img id="logPhotoPreviewImg" alt="Preview"><button id="logPhotoRemove" type="button">Remove</button></div>
+      </div>
+      <div class="form-msg" id="logMsg"></div>
+      <div class="modal-actions">
+        <button class="btn-cancel magnetic-el" id="cancelAddLog">Cancel</button>
+        <button class="btn-primary magnetic-el" id="saveAddLog">Publish Log</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>lucide.createIcons();</script>
 <script>
 // Lightweight custom-cursor tracker (no GSAP dependency, unlike the version
@@ -177,6 +214,6 @@ if (window.matchMedia('(pointer: fine)').matches) {
 </script>
 <!-- Static module tag, not a dynamic import() — see the comment on the
      matching tag in index.html for why the difference matters. -->
-<script type="module" src="member.js?v=7"></script>
+<script type="module" src="member.js?v=8"></script>
 </body>
 </html>
