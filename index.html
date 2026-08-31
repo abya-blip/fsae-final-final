@@ -25,7 +25,7 @@
 <!-- Lucide Icons -->
 <script src="https://unpkg.com/lucide@latest"></script>
 
-<link rel="stylesheet" href="style.css?v=8">
+<link rel="stylesheet" href="style.css?v=9">
 </head>
 <body>
 
@@ -79,7 +79,7 @@
       <a href="#announcements" class="magnetic-el">Announcements<span class="nav-alert" id="navAnnounceAlert" style="display:none;"></span></a>
       <a href="#team" class="magnetic-el">Team</a>
       <a href="#roadmap" class="magnetic-el">Roadmap</a>
-      <a href="#gallery" class="magnetic-el">Gallery</a>
+      <button class="nav-link-btn magnetic-el" id="navGalleryBtn">Gallery</button>
       <a href="#join" class="magnetic-el">Join Us</a>
       <a href="#blog" class="magnetic-el">Blog</a>
     </nav>
@@ -217,29 +217,6 @@
   </div>
 </section>
 
-<!-- Workshop & Build Gallery -->
-<section id="gallery" class="wrap section-padding">
-  <div class="section-header flex-between gsap-fade-up">
-    <div>
-      <div class="eyebrow">Workshop & Media</div>
-      <h2>Build Gallery</h2>
-      <p>A look inside the workshop — CAD models, chassis fabrication, wiring harnesses, and track testing prep.</p>
-    </div>
-  </div>
-
-  <div class="gallery-filters gsap-fade-up" id="galleryFilters">
-    <button class="gallery-filter-btn active" data-filter="all">All Media</button>
-    <button class="gallery-filter-btn" data-filter="chassis">Chassis & Aero</button>
-    <button class="gallery-filter-btn" data-filter="powertrain">Powertrain & Fab</button>
-    <button class="gallery-filter-btn" data-filter="electronics">Electronics & Data</button>
-    <button class="gallery-filter-btn" data-filter="workshop">Workshop & Crew</button>
-  </div>
-
-  <div class="gallery-grid gsap-fade-up" id="galleryGrid">
-    <div class="empty-state"><i data-lucide="loader-2" class="spin"></i> Loading workshop media...</div>
-  </div>
-</section>
-
 <!-- Blog -->
 <section id="blog" class="wrap section-padding">
   <div class="section-header flex-between gsap-fade-up">
@@ -271,6 +248,7 @@
       <a href="#announcements" class="magnetic-el">Announcements</a>
       <a href="#team" class="magnetic-el">Team</a>
       <a href="#roadmap" class="magnetic-el">Roadmap</a>
+      <button class="nav-link-btn magnetic-el" id="footerGalleryBtn" style="font-size:14px;">Gallery</button>
       <a href="#join" class="magnetic-el">Join Us</a>
       <a href="#blog" class="magnetic-el">Blog</a>
       <a href="mailto:team@iiperacing.example" class="magnetic-el">Contact</a>
@@ -483,6 +461,32 @@
   </div>
 </div>
 
+<!-- Workshop & Media Gallery Modal -->
+<div class="modal-backdrop" id="galleryModalBackdrop">
+  <div class="modal gallery-modal">
+    <div class="modal-head" style="align-items: flex-start;">
+      <div class="gallery-modal-header">
+        <div class="eyebrow" style="margin-bottom: 4px;">Workshop & Media</div>
+        <h2 style="margin: 0 0 6px;">Build Gallery</h2>
+        <p style="margin: 0;">A look inside the workshop — CAD models, chassis fabrication, wiring harnesses, and track testing prep.</p>
+      </div>
+      <button class="close-modal-btn" id="closeGalleryModalBtn">&times;</button>
+    </div>
+
+    <div class="gallery-filters" id="galleryFilters">
+      <button class="gallery-filter-btn active" data-filter="all">All Media</button>
+      <button class="gallery-filter-btn" data-filter="chassis">Chassis & Aero</button>
+      <button class="gallery-filter-btn" data-filter="powertrain">Powertrain & Fab</button>
+      <button class="gallery-filter-btn" data-filter="electronics">Electronics & Data</button>
+      <button class="gallery-filter-btn" data-filter="workshop">Workshop & Crew</button>
+    </div>
+
+    <div class="gallery-grid" id="galleryGrid">
+      <div class="empty-state"><i data-lucide="loader-2" class="spin"></i> Loading workshop media...</div>
+    </div>
+  </div>
+</div>
+
 <!-- Full-screen Lightbox Modal -->
 <div class="lightbox-backdrop" id="galleryLightbox">
   <button class="lightbox-close" id="lightboxCloseBtn" title="Close (Esc)">&times;</button>
@@ -507,6 +511,6 @@
      happened, which is what left the preloader up forever. script.js and
      member.js also guard against this themselves now, but the static tag is
      what makes the timing correct in the first place. -->
-<script type="module" src="script.js?v=8"></script>
+<script type="module" src="script.js?v=9"></script>
 </body>
 </html>
