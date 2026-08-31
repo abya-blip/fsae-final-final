@@ -1,11 +1,12 @@
 import { auth, db } from "./firebase-init.js";
 import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-import { collection, addDoc, doc, setDoc, updateDoc, onSnapshot, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+import { collection, addDoc, doc, setDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 const postsRef = collection(db, "posts");
 const applicationsRef = collection(db, "applications");
 const teamRef = collection(db, "team");
 const announcementsRef = collection(db, "announcements");
+const galleryRef = collection(db, "gallery");
 const roadmapDocRef = doc(db, "roadmap", "progress");
 
 // Guarded: these come from third-party CDNs. If one fails to load, an
@@ -419,7 +420,7 @@ onSnapshot(roadmapDocRef, (docSnap) => {
   for(let i = 1; i <= 7; i++) {
     const stepEl = document.querySelector(`.rstep[data-n="${i}"]`);
     if(!stepEl) continue;
-    const state = states[i] !== undefined ? states[i] : 1; 
+const state = states[i] !== undefined ? states[i] : 1; 
     stepEl.classList.remove('done', 'in-progress');
     const tag = stepEl.querySelector('.rtag');
     if(state === 2) { stepEl.classList.add('done'); tag.textContent = 'Completed'; } 
@@ -433,6 +434,11 @@ let currentUser = null;
 onAuthStateChanged(auth, (user) => {
   currentUser = user;
   renderTeamGrid();
+  renderGalleryGrid();
+  const openAddMediaBtn = document.getElementById('openAddMediaBtn');
+  if (openAddMediaBtn) {
+    openAddMediaBtn.style.display = user ? 'inline-flex' : 'none';
+  }
   const authStatus = document.getElementById('authStatus');
   if(!authStatus) return;
   if(user){
@@ -443,24 +449,25 @@ onAuthStateChanged(auth, (user) => {
 
 const modalBackdrop = document.getElementById('modalBackdrop');
 const applyModalBackdrop = document.getElementById('applyModalBackdrop');
-let pendingAction = 'post';
+let targetAction = 'post';
 
 function showAuthedStep(){
   ['signInStep', 'postStep', 'teamStep', 'editTeamStep', 'announceStep', 'roadmapStep'].forEach(id => { const el = document.getElementById(id); if(el) el.style.display = 'none'; });
-  if(pendingAction === 'team'){ document.getElementById('teamStep').style.display = 'block'; document.getElementById('modalTitle').textContent = 'Add Team Member'; }
-  else if(pendingAction === 'announcement'){ document.getElementById('announceStep').style.display = 'block'; document.getElementById('modalTitle').textContent = 'Post Announcement'; }
-  else if(pendingAction === 'roadmap'){ document.getElementById('roadmapStep').style.display = 'block'; document.getElementById('modalTitle').textContent = 'Update Roadmap Status'; }
-  else{ document.getElementById('postStep').style.display = 'block'; document.getElementById('modalTitle').textContent = 'New Blog Post'; }
+  if(targetAction === 'post') { document.getElementById('modalTitle').textContent = 'New Build Log Post'; document.getElementById('postStep').style.display = 'block'; }
+  else if(targetAction === 'team') { document.getElementById('modalTitle').textContent = 'Add Team Member'; document.getElementById('teamStep').style.display = 'block'; }
+  else if(targetAction === 'announcement') { document.getElementById('modalTitle').textContent = 'Post Announcement'; document.getElementById('announceStep').style.display = 'block'; }
+  else if(targetAction === 'roadmap') { document.getElementById('modalTitle').textContent = 'Update Roadmap Progress'; document.getElementById('roadmapStep').style.display = 'block'; }
 }
 
 function openTeamOrPostModal(action){
-  pendingAction = action; modalBackdrop.classList.add('show');
+  targetAction = action;
   if(currentUser){ showAuthedStep(); }
   else{
     document.getElementById('modalTitle').textContent = 'Team Sign In';
     ['signInStep', 'postStep', 'teamStep', 'editTeamStep', 'announceStep', 'roadmapStep'].forEach(id => { const el = document.getElementById(id); if(el) el.style.display = 'none'; });
     document.getElementById('signInStep').style.display = 'block';
   }
+  modalBackdrop.classList.add('show');
 }
 
 function openEditMemberModal(memberId) {
@@ -475,7 +482,6 @@ function openEditMemberModal(memberId) {
   if (founderCb) founderCb.checked = isFounder;
   
   let roleVal = member.role || 'Member';
-  // If it was stored as 'Founder', but options have 'Founder', keep it, else select role
   document.getElementById('editMRole').value = roleVal;
   document.getElementById('editMBio').value = member.bio || '';
   const editMsg = document.getElementById('editTeamMsg');
@@ -723,9 +729,12 @@ const DEFAULT_GALLERY_ITEMS = [
   }
 ];
 
+let firestoreGalleryItems = [];
+let deletedDefaultIds = new Set();
 let activeGalleryFilter = 'all';
-let currentFilteredGallery = [...DEFAULT_GALLERY_ITEMS];
+let currentFilteredGallery = [];
 let currentLightboxIndex = 0;
+let pendingMediaPhoto = null;
 
 const galleryGrid = document.getElementById('galleryGrid');
 const galleryLightbox = document.getElementById('galleryLightbox');
@@ -733,31 +742,79 @@ const lightboxImg = document.getElementById('lightboxImg');
 const lightboxTag = document.getElementById('lightboxTag');
 const lightboxTitle = document.getElementById('lightboxTitle');
 
+// Real-time Firestore sync for gallery media
+onSnapshot(query(galleryRef, orderBy('createdAt', 'desc')), (snapshot) => {
+  firestoreGalleryItems = snapshot.docs.map(d => ({
+    id: d.id,
+    isFirestore: true,
+    ...d.data()
+  }));
+  renderGalleryGrid();
+});
+
 function renderGalleryGrid() {
   if (!galleryGrid) return;
+  
+  const allItems = [
+    ...firestoreGalleryItems,
+    ...DEFAULT_GALLERY_ITEMS.filter(i => !deletedDefaultIds.has(i.id))
+  ];
+
   currentFilteredGallery = activeGalleryFilter === 'all' 
-    ? DEFAULT_GALLERY_ITEMS 
-    : DEFAULT_GALLERY_ITEMS.filter(item => item.category === activeGalleryFilter);
+    ? allItems 
+    : allItems.filter(item => item.category === activeGalleryFilter);
 
   if (currentFilteredGallery.length === 0) {
     galleryGrid.innerHTML = `<div class="empty-state" style="grid-column: 1/-1; text-align:center;">No media in this category yet.</div>`;
     return;
   }
 
-  galleryGrid.innerHTML = currentFilteredGallery.map((item, idx) => `
-    <div class="gallery-card magnetic-el" data-idx="${idx}">
-      <img src="${item.src}" alt="${escapeHtml(item.title)}" loading="lazy">
-      <div class="gallery-card-overlay">
-        <span class="gallery-tag">${escapeHtml(item.tag)}</span>
-        <div class="gallery-title">${escapeHtml(item.title)}</div>
+  galleryGrid.innerHTML = currentFilteredGallery.map((item, idx) => {
+    const delBtnHtml = currentUser 
+      ? `<button class="gallery-card-del-btn" data-id="${item.id}" data-is-fs="${item.isFirestore ? '1' : '0'}" title="Remove image"><i data-lucide="trash-2" size="14"></i></button>`
+      : '';
+    return `
+      <div class="gallery-card magnetic-el" data-idx="${idx}">
+        ${delBtnHtml}
+        <img src="${item.src}" alt="${escapeHtml(item.title)}" loading="lazy">
+        <div class="gallery-card-overlay">
+          <span class="gallery-tag">${escapeHtml(item.tag)}</span>
+          <div class="gallery-title">${escapeHtml(item.title)}</div>
+        </div>
       </div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
+
+  safe('lucide in gallery', () => lucide.createIcons());
 
   document.querySelectorAll('.gallery-card').forEach(card => {
-    card.addEventListener('click', () => {
+    card.addEventListener('click', (e) => {
+      // Don't open lightbox if clicking the delete button
+      if (e.target.closest('.gallery-card-del-btn')) return;
       const idx = parseInt(card.dataset.idx, 10);
       openLightbox(idx);
+    });
+  });
+
+  document.querySelectorAll('.gallery-card-del-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      const id = btn.dataset.id;
+      const isFs = btn.dataset.isFs === '1';
+      if (!confirm("Are you sure you want to remove this image from the gallery?")) return;
+      
+      if (isFs) {
+        try {
+          await deleteDoc(doc(db, "gallery", id));
+        } catch (err) {
+          console.error("Error deleting gallery item:", err);
+          alert("Failed to delete image: " + (err.message || err.code));
+        }
+      } else {
+        deletedDefaultIds.add(id);
+        renderGalleryGrid();
+      }
     });
   });
 }
@@ -812,10 +869,42 @@ document.querySelectorAll('.gallery-filter-btn').forEach(btn => {
   });
 });
 
+/* --- GALLERY MODAL & ADD MEDIA CONTROLLER --- */
 const galleryModalBackdrop = document.getElementById('galleryModalBackdrop');
+const addMediaModalBackdrop = document.getElementById('addMediaModalBackdrop');
 const navGalleryBtn = document.getElementById('navGalleryBtn');
 const footerGalleryBtn = document.getElementById('footerGalleryBtn');
 const closeGalleryModalBtn = document.getElementById('closeGalleryModalBtn');
+const openAddMediaBtn = document.getElementById('openAddMediaBtn');
+const closeAddMediaModalBtn = document.getElementById('closeAddMediaModalBtn');
+const cancelAddMediaBtn = document.getElementById('cancelAddMedia');
+const saveAddMediaBtn = document.getElementById('saveAddMedia');
+const mediaFileInput = document.getElementById('mediaFileInput');
+const mediaPhotoPreview = document.getElementById('mediaPhotoPreview');
+const mediaPhotoPreviewImg = document.getElementById('mediaPhotoPreviewImg');
+const mediaPhotoRemove = document.getElementById('mediaPhotoRemove');
+
+if (mediaFileInput) {
+  mediaFileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      pendingMediaPhoto = ev.target.result;
+      if (mediaPhotoPreviewImg) mediaPhotoPreviewImg.src = pendingMediaPhoto;
+      if (mediaPhotoPreview) mediaPhotoPreview.style.display = 'flex';
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+if (mediaPhotoRemove) {
+  mediaPhotoRemove.addEventListener('click', () => {
+    pendingMediaPhoto = null;
+    if (mediaFileInput) mediaFileInput.value = '';
+    if (mediaPhotoPreview) mediaPhotoPreview.style.display = 'none';
+  });
+}
 
 function openGalleryModal() {
   if (galleryModalBackdrop) {
@@ -828,6 +917,24 @@ function openGalleryModal() {
 function closeGalleryModal() {
   if (galleryModalBackdrop) {
     galleryModalBackdrop.classList.remove('show');
+  }
+}
+
+function openAddMediaModal() {
+  if (!addMediaModalBackdrop) return;
+  document.getElementById('mediaTitle').value = '';
+  document.getElementById('mediaTag').value = '';
+  pendingMediaPhoto = null;
+  if (mediaFileInput) mediaFileInput.value = '';
+  if (mediaPhotoPreview) mediaPhotoPreview.style.display = 'none';
+  const msg = document.getElementById('mediaMsg');
+  if (msg) { msg.textContent = ''; msg.className = 'form-msg'; }
+  addMediaModalBackdrop.classList.add('show');
+}
+
+function closeAddMediaModal() {
+  if (addMediaModalBackdrop) {
+    addMediaModalBackdrop.classList.remove('show');
   }
 }
 
@@ -846,6 +953,52 @@ closeGalleryModalBtn?.addEventListener('click', closeGalleryModal);
 
 galleryModalBackdrop?.addEventListener('click', (e) => {
   if (e.target === galleryModalBackdrop) closeGalleryModal();
+});
+
+openAddMediaBtn?.addEventListener('click', openAddMediaModal);
+closeAddMediaModalBtn?.addEventListener('click', closeAddMediaModal);
+cancelAddMediaBtn?.addEventListener('click', closeAddMediaModal);
+
+addMediaModalBackdrop?.addEventListener('click', (e) => {
+  if (e.target === addMediaModalBackdrop) closeAddMediaModal();
+});
+
+saveAddMediaBtn?.addEventListener('click', async () => {
+  const title = document.getElementById('mediaTitle').value.trim();
+  const category = document.getElementById('mediaCategory').value;
+  const tag = document.getElementById('mediaTag').value.trim() || 'Workshop';
+  const msg = document.getElementById('mediaMsg');
+
+  if (!title || !pendingMediaPhoto) {
+    if (msg) {
+      msg.textContent = 'Please provide a title and select an image file.';
+      msg.className = 'form-msg err';
+    }
+    return;
+  }
+
+  if (saveAddMediaBtn) saveAddMediaBtn.disabled = true;
+  if (msg) { msg.textContent = 'Uploading media...'; msg.className = 'form-msg'; }
+
+  try {
+    await addDoc(galleryRef, {
+      title,
+      category,
+      tag,
+      src: pendingMediaPhoto,
+      createdAt: serverTimestamp(),
+      authorUid: currentUser?.uid || null
+    });
+    closeAddMediaModal();
+  } catch (err) {
+    console.error("Error adding gallery media:", err);
+    if (msg) {
+      msg.textContent = 'Failed to upload media: ' + (err.message || err.code);
+      msg.className = 'form-msg err';
+    }
+  } finally {
+    if (saveAddMediaBtn) saveAddMediaBtn.disabled = false;
+  }
 });
 
 if (window.location.hash === '#gallery') {

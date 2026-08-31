@@ -25,7 +25,7 @@
 <!-- Lucide Icons -->
 <script src="https://unpkg.com/lucide@latest"></script>
 
-<link rel="stylesheet" href="style.css?v=9">
+<link rel="stylesheet" href="style.css?v=10">
 </head>
 <body>
 
@@ -464,13 +464,16 @@
 <!-- Workshop & Media Gallery Modal -->
 <div class="modal-backdrop" id="galleryModalBackdrop">
   <div class="modal gallery-modal">
-    <div class="modal-head" style="align-items: flex-start;">
+    <div class="modal-head" style="align-items: flex-start; justify-content: space-between; gap: 16px;">
       <div class="gallery-modal-header">
         <div class="eyebrow" style="margin-bottom: 4px;">Workshop & Media</div>
         <h2 style="margin: 0 0 6px;">Build Gallery</h2>
         <p style="margin: 0;">A look inside the workshop — CAD models, chassis fabrication, wiring harnesses, and track testing prep.</p>
       </div>
-      <button class="close-modal-btn" id="closeGalleryModalBtn">&times;</button>
+      <div style="display:flex; align-items:center; gap:12px; flex-shrink:0;">
+        <button class="btn-secondary btn-small magnetic-el" id="openAddMediaBtn" style="display:none;"><i data-lucide="plus" size="14"></i> Add Image</button>
+        <button class="close-modal-btn" id="closeGalleryModalBtn" style="position:static;">&times;</button>
+      </div>
     </div>
 
     <div class="gallery-filters" id="galleryFilters">
@@ -483,6 +486,42 @@
 
     <div class="gallery-grid" id="galleryGrid">
       <div class="empty-state"><i data-lucide="loader-2" class="spin"></i> Loading workshop media...</div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Gallery Media Modal -->
+<div class="modal-backdrop" id="addMediaModalBackdrop">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 class="modal-title">Add Workshop Media</h3>
+      <button class="close-modal-btn" id="closeAddMediaModalBtn">&times;</button>
+    </div>
+    <div>
+      <div class="field"><label>Media Title</label><input type="text" id="mediaTitle" placeholder="e.g. TIG Welded Chromoly Chassis Jig"></div>
+      <div class="field">
+        <label>Category</label>
+        <select id="mediaCategory">
+          <option value="chassis">Chassis & Aero</option>
+          <option value="powertrain">Powertrain & Fab</option>
+          <option value="electronics">Electronics & Data</option>
+          <option value="workshop" selected>Workshop & Crew</option>
+        </select>
+      </div>
+      <div class="field"><label>Tag Badge</label><input type="text" id="mediaTag" placeholder="e.g. Fabrication, Aero, Telemetry"></div>
+      <div class="field">
+        <label>Image File</label>
+        <input type="file" id="mediaFileInput" accept="image/*">
+        <div class="photo-preview" id="mediaPhotoPreview" style="display:none;">
+          <img id="mediaPhotoPreviewImg" alt="Preview">
+          <button id="mediaPhotoRemove" type="button">Remove</button>
+        </div>
+      </div>
+      <div class="form-msg" id="mediaMsg"></div>
+      <div class="modal-actions">
+        <button class="btn-cancel magnetic-el" id="cancelAddMedia">Cancel</button>
+        <button class="btn-primary magnetic-el" id="saveAddMedia">Upload & Add</button>
+      </div>
     </div>
   </div>
 </div>
@@ -511,6 +550,6 @@
      happened, which is what left the preloader up forever. script.js and
      member.js also guard against this themselves now, but the static tag is
      what makes the timing correct in the first place. -->
-<script type="module" src="script.js?v=9"></script>
+<script type="module" src="script.js?v=10"></script>
 </body>
 </html>
