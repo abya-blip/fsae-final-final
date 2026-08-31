@@ -1,12 +1,13 @@
 import { auth, db } from "./firebase-init.js";
 import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-import { collection, addDoc, doc, setDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+import { collection, addDoc, doc, setDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 const postsRef = collection(db, "posts");
 const applicationsRef = collection(db, "applications");
 const teamRef = collection(db, "team");
 const announcementsRef = collection(db, "announcements");
 const galleryRef = collection(db, "gallery");
+const notificationsRef = collection(db, "notifications");
 const roadmapDocRef = doc(db, "roadmap", "progress");
 
 // Guarded: these come from third-party CDNs. If one fails to load, an
@@ -18,6 +19,31 @@ function safe(label, fn) {
 }
 
 safe('lucide icons', () => lucide.createIcons());
+
+// --- GLOBAL UI & UX LISTENERS ---
+// Mouse tracking for glowing cards
+document.addEventListener('mousemove', (e) => {
+  const card = e.target.closest('.glow-card');
+  if (card) {
+    const rect = card.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    card.style.setProperty('--mouse-x', `${x}px`);
+    card.style.setProperty('--mouse-y', `${y}px`);
+  }
+});
+
+// Floating frosted navbar on scroll
+const navbar = document.querySelector('.navbar');
+if (navbar) {
+  window.addEventListener('scroll', () => {
+    if (window.scrollY > 50) {
+      navbar.classList.add('scrolled');
+    } else {
+      navbar.classList.remove('scrolled');
+    }
+  });
+}
 
 // Run a callback on window 'load' — or immediately, if 'load' has already
 // fired by the time this module runs. Listening for an event that is already
@@ -368,7 +394,7 @@ function renderTeamGrid() {
     return `
     <div class="swiper-slide">
       <!-- Attached the dbKey safely to data-id -->
-      <div class="team-card magnetic-el" data-id="${m.dbKey}" style="cursor:pointer;">
+      <div class="team-card glow-card magnetic-el" data-id="${m.dbKey}" style="cursor:pointer;">
         ${editBtnHtml}
         <div class="team-avatar">${m.photo ? `<img src="${m.photo}">` : escapeHtml((m.name || '?')[0].toUpperCase())}</div>
         <h3 class="team-name">${escapeHtml(m.name)}</h3>
@@ -407,7 +433,7 @@ onSnapshot(query(announcementsRef, orderBy('createdAt', 'desc')), (snapshot) => 
   const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   if(!items.length) { announceList.innerHTML = `<div class="empty-state">No announcements yet.</div>`; if(navAnnounceAlert) navAnnounceAlert.style.display = 'none'; return; }
   announceList.innerHTML = items.map(a => `
-    <div class="announce-card ${a.priority === 'urgent' ? 'urgent' : ''}">
+    <div class="announce-card glow-card ${a.priority === 'urgent' ? 'urgent' : ''}">
       <div class="announce-head"><span class="announce-badge ${a.priority === 'urgent' ? 'urgent' : ''}">${a.priority === 'urgent' ? 'Urgent' : 'Notice'}</span><span class="announce-date">${fmtDate(a.createdAt)}</span></div>
       <h3 class="announce-title">${escapeHtml(a.title)}</h3><p class="announce-body">${escapeHtml(a.body)}</p><div class="announce-author">— ${escapeHtml(a.author || 'Team')}</div>
     </div>`).join('');
@@ -431,6 +457,7 @@ const state = states[i] !== undefined ? states[i] : 1;
 
 // --- AUTH & MODAL CONTROLS ---
 let currentUser = null;
+let currentUserTeamProfile = null;
 onAuthStateChanged(auth, (user) => {
   currentUser = user;
   renderTeamGrid();
@@ -440,11 +467,83 @@ onAuthStateChanged(auth, (user) => {
     openAddMediaBtn.style.display = user ? 'inline-flex' : 'none';
   }
   const authStatus = document.getElementById('authStatus');
-  if(!authStatus) return;
+  const notifBtn = document.getElementById('notifBtn');
+  const notifBadge = document.getElementById('notifBadge');
+  const notifDropdown = document.getElementById('notifDropdown');
+  const notifList = document.getElementById('notifList');
+
   if(user){
-    authStatus.innerHTML = `<span class="live-dot"></span>Signed in as ${escapeHtml(user.email)} · <a href="admin.html">Applications</a> · <button id="signOutBtn" style="color:var(--accent);">Sign out</button>`;
-    document.getElementById('signOutBtn')?.addEventListener('click', () => signOut(auth));
-  }else{ authStatus.innerHTML = ''; }
+    if(authStatus) {
+      authStatus.innerHTML = `<span class="live-dot"></span>Signed in as ${escapeHtml(user.email)} · <a href="admin.html">Applications</a> · <button id="signOutBtn" style="color:var(--accent);">Sign out</button>`;
+      document.getElementById('signOutBtn')?.addEventListener('click', () => signOut(auth));
+    }
+    if(notifBtn) notifBtn.style.display = 'inline-flex';
+
+    // Fetch team profile to get varying permissions
+    onSnapshot(query(teamRef, where("authEmail", "==", user.email)), (snap) => {
+      if (!snap.empty) {
+        currentUserTeamProfile = { id: snap.docs[0].id, ...snap.docs[0].data() };
+      }
+    });
+
+    // Listen to notifications
+    onSnapshot(query(notificationsRef, orderBy('createdAt', 'desc')), (snap) => {
+      const notifs = snap.docs.map(d => ({id: d.id, ...d.data()}))
+        .filter(n => n.recipient === 'all' || n.recipient === user.email || (currentUserTeamProfile && n.roleGroup === currentUserTeamProfile.role));
+      
+      const readIds = JSON.parse(localStorage.getItem(`readNotifs_${user.uid}`) || '[]');
+      
+      if(notifList) {
+        if(!notifs.length) {
+          notifList.innerHTML = '<div style="text-align:center;padding:20px;">No new notifications</div>';
+          if(notifBadge) notifBadge.style.display = 'none';
+        } else {
+          const unread = notifs.filter(n => !readIds.includes(n.id)).length;
+          if(notifBadge) notifBadge.style.display = unread > 0 ? 'inline-block' : 'none';
+          
+          notifList.innerHTML = notifs.map(n => `
+            <div style="padding:10px; border-radius:6px; background:${readIds.includes(n.id) ? 'transparent' : 'rgba(230,57,70,0.1)'}; border:1px solid ${readIds.includes(n.id) ? 'var(--border-subtle)' : 'var(--accent)'}; transition: all 0.2s;">
+              <strong style="display:block; margin-bottom:4px; color:${readIds.includes(n.id) ? 'var(--text-secondary)' : 'var(--text-primary)'};">${escapeHtml(n.title)}</strong>
+              <span style="font-size:12px;">${escapeHtml(n.body)}</span>
+              ${n.type ? `<div style="margin-top:6px;"><span class="announce-badge">${escapeHtml(n.type)}</span></div>` : ''}
+            </div>
+          `).join('');
+        }
+      }
+      
+      document.getElementById('markAllReadBtn')?.addEventListener('click', () => {
+        const allIds = notifs.map(n => n.id);
+        localStorage.setItem(`readNotifs_${user.uid}`, JSON.stringify(allIds));
+        if(notifBadge) notifBadge.style.display = 'none';
+        notifList?.querySelectorAll('div').forEach(d => {
+          d.style.background = 'transparent';
+          d.style.borderColor = 'var(--border-subtle)';
+          const strong = d.querySelector('strong');
+          if(strong) strong.style.color = 'var(--text-secondary)';
+        });
+      });
+    });
+
+  }else{ 
+    if(authStatus) authStatus.innerHTML = ''; 
+    if(notifBtn) notifBtn.style.display = 'none';
+    currentUserTeamProfile = null;
+  }
+});
+
+// Dropdown toggle
+document.getElementById('notifBtn')?.addEventListener('click', (e) => {
+  const dd = document.getElementById('notifDropdown');
+  if(dd) dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+});
+
+// Close dropdown on outside click
+document.addEventListener('click', (e) => {
+  const btn = document.getElementById('notifBtn');
+  const dd = document.getElementById('notifDropdown');
+  if (btn && dd && !btn.contains(e.target) && !dd.contains(e.target)) {
+    dd.style.display = 'none';
+  }
 });
 
 const modalBackdrop = document.getElementById('modalBackdrop');
@@ -547,6 +646,7 @@ if(mIsFounder) mIsFounder.addEventListener('change', checkAddMemberVerticalMode)
 
 document.getElementById('submitTeam').addEventListener('click', async () => {
   const name = document.getElementById('mName').value.trim(); 
+  const authEmail = document.getElementById('mAuthEmail')?.value.trim() || null;
   const rollNo = document.getElementById('mRoll').value.trim(); 
   const isFounder = mIsFounder ? mIsFounder.checked : false;
   let role = mRole.value; 
@@ -573,6 +673,7 @@ document.getElementById('submitTeam').addEventListener('click', async () => {
   try{ 
     await addDoc(teamRef, { 
       name, 
+      authEmail,
       rollNo, 
       isFounder,
       verticals, 
@@ -597,6 +698,7 @@ document.getElementById('submitTeam').addEventListener('click', async () => {
 document.getElementById('saveEditTeam')?.addEventListener('click', async () => {
   const id = document.getElementById('editMId').value;
   const name = document.getElementById('editMName').value.trim();
+  const authEmail = document.getElementById('editMAuthEmail')?.value.trim() || null;
   const rollNo = document.getElementById('editMRoll').value.trim();
   const isFounder = document.getElementById('editMIsFounder')?.checked || false;
   let role = document.getElementById('editMRole').value;
@@ -624,6 +726,7 @@ document.getElementById('saveEditTeam')?.addEventListener('click', async () => {
   try {
     await updateDoc(doc(db, "team", id), {
       name,
+      authEmail,
       rollNo,
       isFounder,
       role,

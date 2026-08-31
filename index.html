@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="view-transition" content="same-origin">
 <title>IIPE Racing — SAE Supra 2027</title>
 <meta name="theme-color" content="#050505">
 <link rel="icon" href="assets/favicon.ico" sizes="any">
@@ -83,7 +84,18 @@
       <a href="#join" class="magnetic-el">Join Us</a>
       <a href="#blog" class="magnetic-el">Blog</a>
     </nav>
-    <div class="nav-right">
+    <div class="nav-right" style="position:relative;">
+      <button class="nav-icon-btn magnetic-el" id="notifBtn" style="color:var(--text-secondary); display:none; position:relative;" title="Notifications">
+        <i data-lucide="bell" style="width:20px;height:20px;"></i>
+        <span class="notif-badge" id="notifBadge" style="display:none; position:absolute; top:-2px; right:-2px; background:var(--accent); width:8px; height:8px; border-radius:50%;"></span>
+      </button>
+      <div class="notif-dropdown" id="notifDropdown" style="display:none; position:absolute; top:45px; right:0; width:300px; background:var(--bg-elevated); border:1px solid var(--border-subtle); border-radius:var(--radius-md); padding:16px; z-index:100; box-shadow:var(--shadow-lg);">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-subtle); padding-bottom:12px; margin-bottom:12px;">
+          <strong style="font-size:14px;">Notifications</strong>
+          <button id="markAllReadBtn" style="font-size:12px; color:var(--text-secondary);">Clear</button>
+        </div>
+        <div id="notifList" style="max-height:300px; overflow-y:auto; font-size:13px; color:var(--text-secondary); display:flex; flex-direction:column; gap:12px;"></div>
+      </div>
       <a href="#join" class="btn-primary btn-nav magnetic-el" id="navJoinBtn">Join The Team</a>
       <button class="menu-btn magnetic-el" id="menuBtn"><i data-lucide="menu"></i></button>
     </div>
@@ -96,6 +108,7 @@
   <div class="hero-bg">
     <div class="hero-img" style="background-image: url('wallhaven-kwqym1_3840x2160.jpg');"></div>
     <div class="hero-overlay"></div>
+    <div class="blueprint-grid"></div>
   </div>
   
   <div class="wrap hero-wrap gsap-fade-up">
@@ -144,12 +157,12 @@
   </div>
   
   <div class="bento-grid">
-    <div class="bento-card magnetic-el gsap-fade-up"><i data-lucide="box" class="bento-icon"></i><h3>Chassis & Body</h3><p>Frame design, ergonomics, aero surfaces.</p></div>
-    <div class="bento-card magnetic-el gsap-fade-up"><i data-lucide="settings" class="bento-icon"></i><h3>Powertrain</h3><p>Engine integration, drivetrain, cooling.</p></div>
-    <div class="bento-card magnetic-el gsap-fade-up"><i data-lucide="git-merge" class="bento-icon"></i><h3>Suspension & Steering</h3><p>Dynamics, geometry, tuning.</p></div>
-    <div class="bento-card magnetic-el gsap-fade-up"><i data-lucide="cpu" class="bento-icon"></i><h3>Electronics</h3><p>Data acquisition, wiring, controls.</p></div>
-    <div class="bento-card magnetic-el gsap-fade-up"><i data-lucide="hammer" class="bento-icon"></i><h3>Manufacturing</h3><p>Fabrication, machining, composites.</p></div>
-    <div class="bento-card magnetic-el gsap-fade-up"><i data-lucide="briefcase" class="bento-icon"></i><h3>Business & Ops</h3><p>Budgeting, logistics, outreach.</p></div>
+    <div class="bento-card glow-card magnetic-el gsap-fade-up"><i data-lucide="box" class="bento-icon"></i><h3>Chassis & Body</h3><p>Frame design, ergonomics, aero surfaces.</p></div>
+    <div class="bento-card glow-card magnetic-el gsap-fade-up"><i data-lucide="settings" class="bento-icon"></i><h3>Powertrain</h3><p>Engine integration, drivetrain, cooling.</p></div>
+    <div class="bento-card glow-card magnetic-el gsap-fade-up"><i data-lucide="git-merge" class="bento-icon"></i><h3>Suspension & Steering</h3><p>Dynamics, geometry, tuning.</p></div>
+    <div class="bento-card glow-card magnetic-el gsap-fade-up"><i data-lucide="cpu" class="bento-icon"></i><h3>Electronics</h3><p>Data acquisition, wiring, controls.</p></div>
+    <div class="bento-card glow-card magnetic-el gsap-fade-up"><i data-lucide="hammer" class="bento-icon"></i><h3>Manufacturing</h3><p>Fabrication, machining, composites.</p></div>
+    <div class="bento-card glow-card magnetic-el gsap-fade-up"><i data-lucide="briefcase" class="bento-icon"></i><h3>Business & Ops</h3><p>Budgeting, logistics, outreach.</p></div>
   </div>
 </section>
 
@@ -208,12 +221,12 @@
   </div>
 
   <div class="division-grid gsap-fade-up">
-    <div class="div-card magnetic-el" data-vertical="Chassis & Body"><span class="join-tag">Recruiting</span><h4>Chassis & Body</h4><p>Structural design, ergonomics, and aero surfacing for the frame.</p><button class="join-apply">Apply →</button></div>
-    <div class="div-card magnetic-el" data-vertical="Powertrain"><span class="join-tag">Recruiting</span><h4>Powertrain</h4><p>Engine, drivetrain, cooling, and fuel systems integration.</p><button class="join-apply">Apply →</button></div>
-    <div class="div-card magnetic-el" data-vertical="Suspension & Steering"><span class="join-tag">Recruiting</span><h4>Suspension & Steering</h4><p>Geometry, dampers, and handling dynamics.</p><button class="join-apply">Apply →</button></div>
-    <div class="div-card magnetic-el" data-vertical="Electronics & Data"><span class="join-tag">Recruiting</span><h4>Electronics & Data</h4><p>Wiring harness, sensors, telemetry, and controls.</p><button class="join-apply">Apply →</button></div>
-    <div class="div-card magnetic-el" data-vertical="Manufacturing"><span class="join-tag">Recruiting</span><h4>Manufacturing</h4><p>Fabrication, machining, welding, composites layup.</p><button class="join-apply">Apply →</button></div>
-    <div class="div-card magnetic-el" data-vertical="Business & Ops"><span class="join-tag">Recruiting</span><h4>Business & Ops</h4><p>Budgeting, event logistics, outreach, media.</p><button class="join-apply">Apply →</button></div>
+    <div class="div-card glow-card magnetic-el" data-vertical="Chassis & Body"><span class="join-tag">Recruiting</span><h4>Chassis & Body</h4><p>Structural design, ergonomics, and aero surfacing for the frame.</p><button class="join-apply">Apply →</button></div>
+    <div class="div-card glow-card magnetic-el" data-vertical="Powertrain"><span class="join-tag">Recruiting</span><h4>Powertrain</h4><p>Engine, drivetrain, cooling, and fuel systems integration.</p><button class="join-apply">Apply →</button></div>
+    <div class="div-card glow-card magnetic-el" data-vertical="Suspension & Steering"><span class="join-tag">Recruiting</span><h4>Suspension & Steering</h4><p>Geometry, dampers, and handling dynamics.</p><button class="join-apply">Apply →</button></div>
+    <div class="div-card glow-card magnetic-el" data-vertical="Electronics & Data"><span class="join-tag">Recruiting</span><h4>Electronics & Data</h4><p>Wiring harness, sensors, telemetry, and controls.</p><button class="join-apply">Apply →</button></div>
+    <div class="div-card glow-card magnetic-el" data-vertical="Manufacturing"><span class="join-tag">Recruiting</span><h4>Manufacturing</h4><p>Fabrication, machining, welding, composites layup.</p><button class="join-apply">Apply →</button></div>
+    <div class="div-card glow-card magnetic-el" data-vertical="Business & Ops"><span class="join-tag">Recruiting</span><h4>Business & Ops</h4><p>Budgeting, event logistics, outreach, media.</p><button class="join-apply">Apply →</button></div>
   </div>
 </section>
 
@@ -291,6 +304,7 @@
     <!-- Add Team Step -->
     <div id="teamStep" style="display:none;">
       <div class="field"><label>Name</label><input type="text" id="mName" placeholder="Full name"></div>
+      <div class="field"><label>Auth Email (Linked Account)</label><input type="email" id="mAuthEmail" placeholder="e.g. member@iipe.ac.in"></div>
       <div class="field"><label>Roll number</label><input type="text" id="mRoll" placeholder="e.g. 24ME1042"></div>
       <div class="field" style="margin-bottom: 12px;">
         <label class="checkbox-pill founder-toggle" style="display:inline-flex; width:auto; cursor:pointer;">
@@ -348,6 +362,7 @@
     <div id="editTeamStep" style="display:none;">
       <input type="hidden" id="editMId">
       <div class="field"><label>Name</label><input type="text" id="editMName" placeholder="Full name"></div>
+      <div class="field"><label>Auth Email (Linked Account)</label><input type="email" id="editMAuthEmail" placeholder="e.g. member@iipe.ac.in"></div>
       <div class="field"><label>Roll number</label><input type="text" id="editMRoll" placeholder="e.g. 24ME1042"></div>
       <div class="field" style="margin-bottom: 12px;">
         <label class="checkbox-pill founder-toggle" style="display:inline-flex; width:auto; cursor:pointer;">

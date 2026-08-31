@@ -49,5 +49,11 @@ service cloud.firestore {
       allow read: if true;
       allow create, update, delete: if request.auth != null;
     }
+
+    // In-App Notifications
+    match /notifications/{notifId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
   }
 }
