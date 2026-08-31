@@ -773,64 +773,7 @@ submitApplyBtn?.addEventListener('click', async () => {
 });
 
 /* --- WORKSHOP BUILD GALLERY & LIGHTBOX --- */
-const DEFAULT_GALLERY_ITEMS = [
-  {
-    id: 'g1',
-    title: 'Formula Student Race Car Concept Render',
-    category: 'chassis',
-    tag: 'Chassis & Aero',
-    src: 'wallhaven-kwqym1_3840x2160.jpg'
-  },
-  {
-    id: 'g2',
-    title: 'Chromoly 4130 Spaceframe Chassis Design & FEA',
-    category: 'chassis',
-    tag: 'Chassis',
-    src: 'https://images.unsplash.com/photo-1580273916550-e323be2ae537?auto=format&fit=crop&w=1200&q=80'
-  },
-  {
-    id: 'g3',
-    title: 'High-Performance Engine Packaging & Custom Intake',
-    category: 'powertrain',
-    tag: 'Powertrain',
-    src: 'https://images.unsplash.com/photo-1517524008697-84bbe3c3fd98?auto=format&fit=crop&w=1200&q=80'
-  },
-  {
-    id: 'g4',
-    title: 'Custom CAN-Bus Wiring Harness & Telemetry Microcontroller',
-    category: 'electronics',
-    tag: 'Electronics',
-    src: 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1200&q=80'
-  },
-  {
-    id: 'g5',
-    title: 'TIG Welded Upright & Suspension Jigging',
-    category: 'powertrain',
-    tag: 'Fabrication',
-    src: 'https://images.unsplash.com/photo-1504917599217-d4dc5ebe6122?auto=format&fit=crop&w=1200&q=80'
-  },
-  {
-    id: 'g6',
-    title: 'Double Wishbone Pushrod Suspension Geometry',
-    category: 'workshop',
-    tag: 'Suspension',
-    src: 'https://images.unsplash.com/photo-1486006920555-c77dce18193b?auto=format&fit=crop&w=1200&q=80'
-  },
-  {
-    id: 'g7',
-    title: 'IIPE Racing Garage Workshop & Tooling Station',
-    category: 'workshop',
-    tag: 'Workshop & Crew',
-    src: 'https://images.unsplash.com/photo-1617814076367-b759c7d7e738?auto=format&fit=crop&w=1200&q=80'
-  },
-  {
-    id: 'g8',
-    title: 'Telemetry Sensors & DAQ Logging Dashboard',
-    category: 'electronics',
-    tag: 'Telemetry',
-    src: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80'
-  }
-];
+const DEFAULT_GALLERY_ITEMS = [];
 
 let firestoreGalleryItems = [];
 let deletedDefaultIds = new Set();
