@@ -1,170 +1,114 @@
-// ============================================================
-// This is the public site's script. Firebase setup notes and the shared
-// app/auth/db config live in firebase-init.js (also used by admin.js, the
-// sign-in-only applications page) — edit the config there, not here.
-// ============================================================
 import { auth, db } from "./firebase-init.js";
-import {
-  signInWithEmailAndPassword, onAuthStateChanged, signOut
-} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-import {
-  collection, addDoc, onSnapshot, query, orderBy, serverTimestamp
-} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
-import { animate, scroll, inView } from "https://cdn.jsdelivr.net/npm/motion@13.1.1/+esm";
+import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+import { collection, addDoc, doc, setDoc, updateDoc, onSnapshot, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 const postsRef = collection(db, "posts");
 const applicationsRef = collection(db, "applications");
 const teamRef = collection(db, "team");
 const announcementsRef = collection(db, "announcements");
+const roadmapDocRef = doc(db, "roadmap", "progress");
 
-// ---------- mobile menu ----------
-// class-driven (not inline styles) so CSS can animate the open/close, closes
-// itself on link tap / outside tap / Escape — none of which the old inline-style
-// toggle did, which on a phone meant the menu just sat open over the page.
-const menuBtn = document.getElementById('menuBtn');
-const navLinks = document.querySelector('.nav-links');
-
-function closeMobileMenu(){
-  navLinks.classList.remove('open');
-  menuBtn.textContent = '☰';
-  menuBtn.setAttribute('aria-expanded', 'false');
+// Guarded: these come from third-party CDNs. If one fails to load, an
+// uncaught error here would abort this whole module — taking the team-card
+// click handling and every Firestore listener down with it over nothing more
+// than a missing icon set. Cosmetic libraries must never be load-bearing.
+function safe(label, fn) {
+  try { fn(); } catch (err) { console.warn(`[init] skipped ${label}:`, err); }
 }
-function openMobileMenu(){
-  navLinks.classList.add('open');
-  menuBtn.textContent = '✕';
-  menuBtn.setAttribute('aria-expanded', 'true');
-}
-menuBtn.setAttribute('aria-expanded', 'false');
-menuBtn.addEventListener('click', (e) => {
-  e.stopPropagation();
-  navLinks.classList.contains('open') ? closeMobileMenu() : openMobileMenu();
-});
-navLinks.querySelectorAll('a').forEach(a => a.addEventListener('click', closeMobileMenu));
-document.addEventListener('click', (e) => {
-  if(navLinks.classList.contains('open') && !navLinks.contains(e.target) && e.target !== menuBtn){
-    closeMobileMenu();
-  }
-});
-document.addEventListener('keydown', (e) => { if(e.key === 'Escape') closeMobileMenu(); });
 
-// ---------- start-light hero sequence ----------
-(function startLights(){
-  const lights = document.querySelectorAll('.light');
-  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if(reduced){
-    lights.forEach(l => l.classList.add('go'));
-    return;
-  }
-  lights.forEach((l, i) => {
-    setTimeout(() => l.classList.add('on'), 300 + i * 260);
-  });
+safe('lucide icons', () => lucide.createIcons());
+
+// Run a callback on window 'load' — or immediately, if 'load' has already
+// fired by the time this module runs. Listening for an event that is already
+// in the past silently never fires, which is exactly how the preloader got
+// stuck on screen forever. Everything below is gated on this, so the page can
+// never be left in its loading state again regardless of script timing.
+function onWindowReady(fn) {
+  if (document.readyState === 'complete') fn();
+  else window.addEventListener('load', fn);
+}
+
+// --- PRELOADER, GSAP & CURSOR PHYSICS ---
+onWindowReady(() => {
   setTimeout(() => {
-    lights.forEach(l => { l.classList.remove('on'); l.classList.add('go'); });
-  }, 300 + lights.length * 260 + 350);
-  setTimeout(() => {
-    lights.forEach(l => l.classList.remove('go'));
-  }, 300 + lights.length * 260 + 1600);
-})();
+    // Hidden first and unconditionally, before any of the decorative GSAP
+    // work below — so even if an animation library misbehaves, the visitor
+    // is never left staring at the loading screen.
+    const preloader = document.getElementById('preloader');
+    if (preloader) preloader.classList.add('hidden');
 
-// ---------- scroll reveal ----------
-const revealEls = document.querySelectorAll('.reveal');
-const io = new IntersectionObserver((entries) => {
-  entries.forEach(e => { if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } });
-}, { threshold: 0.12 });
-revealEls.forEach(el => io.observe(el));
+    safe('gsap scroll animations', () => {
+    gsap.registerPlugin(ScrollTrigger);
 
-// ---------- motion.dev: scroll progress bar, spring press feedback, count-up stats ----------
-const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    gsap.utils.toArray('.gsap-fade-up').forEach(element => {
+      gsap.fromTo(element,
+        { y: 40, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.8, ease: "power3.out", scrollTrigger: { trigger: element, start: "top 85%" } }
+      );
+    });
 
-if(!reducedMotion){
-  scroll(animate(".scroll-progress", { scaleX: [0, 1] }, { ease: "linear" }));
-}
+    gsap.to("#scrollProgress", { scaleX: 1, ease: "none", scrollTrigger: { scrub: 0.3 } });
 
-// tactile press feedback via `filter`, never `transform` — the existing hover
-// states on these same elements already animate `transform`, and Motion sets
-// inline styles directly, so animating the same property here would fight them.
-function addPressFeedback(selector){
-  if(reducedMotion) return;
-  document.querySelectorAll(selector).forEach(el => {
-    const press = () => animate(el, { filter: 'brightness(0.82)' }, { type: 'spring', stiffness: 600, damping: 30 });
-    const release = () => animate(el, { filter: 'brightness(1)' }, { type: 'spring', stiffness: 300, damping: 20 });
-    el.addEventListener('pointerdown', press);
-    el.addEventListener('pointerup', release);
-    el.addEventListener('pointerleave', release);
-  });
-}
-addPressFeedback('.btn-primary, .btn-ghost, .nav-cta, .join-apply');
+    gsap.to('.glow-1', { backgroundColor: 'rgba(0, 240, 255, 0.15)', scrollTrigger: { trigger: '#about', start: 'top center', end: 'bottom center', scrub: true } });
+    gsap.to('.glow-2', { backgroundColor: 'rgba(122, 56, 254, 0.15)', scrollTrigger: { trigger: '#team', start: 'top center', end: 'bottom center', scrub: true } });
+    });
 
-// ---------- hero cursor spotlight — a soft headlight glow that tracks the
-// pointer, desktop-only (touch devices have no hover) and skipped entirely
-// under reduced-motion since it's a continuous visual effect ----------
-(function heroSpotlight(){
-  const hero = document.querySelector('.hero');
-  if(!hero || reducedMotion || !window.matchMedia('(pointer:fine)').matches) return;
-  hero.addEventListener('pointermove', (e) => {
-    const r = hero.getBoundingClientRect();
-    hero.style.setProperty('--mx', `${((e.clientX - r.left) / r.width) * 100}%`);
-    hero.style.setProperty('--my', `${((e.clientY - r.top) / r.height) * 100}%`);
-  });
-  hero.addEventListener('pointerenter', () => hero.classList.add('spotlight-active'));
-  hero.addEventListener('pointerleave', () => hero.classList.remove('spotlight-active'));
-})();
+    safe('custom cursor', () => {
+    if (window.matchMedia("(pointer: fine)").matches) {
+      const cursorDot = document.querySelector('.cursor-dot');
+      const cursorOutline = document.querySelector('.cursor-outline');
+      
+      let xTo = gsap.quickTo(cursorOutline, "x", {duration: 0.3, ease: "power3"});
+      let yTo = gsap.quickTo(cursorOutline, "y", {duration: 0.3, ease: "power3"});
+      
+      window.addEventListener('mousemove', e => {
+        gsap.set(cursorDot, {x: e.clientX, y: e.clientY});
+        xTo(e.clientX); yTo(e.clientY);
+      });
 
-// animates a stat element from one number to another; safe to call repeatedly
-// as live data changes (e.g. the team roster growing)
-function animateCount(el, from, to, duration = 1){
+      document.querySelectorAll('a, button, .div-card, .bento-card, .team-card, .post, select, input, textarea, .swiper-button-next, .swiper-button-prev, .swiper-pagination-bullet').forEach(el => {
+        el.addEventListener('mouseenter', () => cursorOutline.classList.add('hover'));
+        el.addEventListener('mouseleave', () => cursorOutline.classList.remove('hover'));
+      });
+      
+      document.querySelectorAll('.magnetic-el').forEach(btn => {
+        btn.addEventListener('mousemove', (e) => {
+          const rect = btn.getBoundingClientRect();
+          const x = (e.clientX - rect.left - rect.width / 2) * 0.3; 
+          const y = (e.clientY - rect.top - rect.height / 2) * 0.3;
+          gsap.to(btn, { x: x, y: y, duration: 0.4, ease: "power2.out" });
+        });
+        btn.addEventListener('mouseleave', () => {
+          gsap.to(btn, { x: 0, y: 0, duration: 0.7, ease: "elastic.out(1, 0.3)" });
+        });
+      });
+    }
+    });
+  }, 1900);
+});
+
+function animateCount(el, from, to, duration = 1.2) {
   if(!el) return;
-  if(reducedMotion){ el.textContent = Math.round(to).toLocaleString(); return; }
-  animate(from, to, {
-    duration,
-    ease: 'easeOut',
-    onUpdate: (latest) => { el.textContent = Math.round(latest).toLocaleString(); }
-  });
+  const obj = { val: from };
+  gsap.to(obj, { val: to, duration, ease: "power2.out", onUpdate: () => { el.textContent = Math.round(obj.val).toLocaleString(); } });
 }
 
-// ---------- countdown ----------
 (function countdown(){
   const target = new Date('2027-06-01T00:00:00');
-  const now = new Date();
-  const days = Math.max(0, Math.ceil((target - now) / 86400000));
+  const days = Math.max(0, Math.ceil((target - new Date()) / 86400000));
   const tickDaysEl = document.getElementById('tickDays');
-  inView('.ticker', () => { animateCount(tickDaysEl, 0, days, 1.2); }, { amount: 0.4 });
+  ScrollTrigger.create({ trigger: '.ticker', start: 'top 80%', onEnter: () => animateCount(tickDaysEl, 0, days) });
 })();
 
-// ---------- blog: Firebase-backed ----------
-const blogList = document.getElementById('blogList');
-const modalBackdrop = document.getElementById('modalBackdrop');
-const modalTitle = document.getElementById('modalTitle');
-const signInStep = document.getElementById('signInStep');
-const postStep = document.getElementById('postStep');
-const teamStep = document.getElementById('teamStep');
-const announceStep = document.getElementById('announceStep');
-const emailInput = document.getElementById('emailInput');
-const passInput = document.getElementById('passInput');
-const signInMsg = document.getElementById('signInMsg');
-const postMsg = document.getElementById('postMsg');
-const authStatus = document.getElementById('authStatus');
-const newPostBtn = document.getElementById('newPostBtn');
+// --- MOBILE MENU ---
+const menuBtn = document.getElementById('menuBtn');
+const navLinks = document.querySelector('.nav-links');
+menuBtn?.addEventListener('click', (e) => { e.stopPropagation(); navLinks.classList.toggle('open'); });
+document.addEventListener('click', (e) => { if(navLinks?.classList.contains('open') && !navLinks.contains(e.target) && e.target !== menuBtn) { navLinks.classList.remove('open'); } });
 
-let currentUser = null;
-let hasRenderedOnce = false;
-let flashTopOnNextRender = false;
-let pendingAction = 'post'; // 'post' | 'team' | 'announcement' — which step to reveal after sign-in
-let pendingPostImage = null;
-let pendingMemberPhoto = null;
+function fmtDate(ts){ const d = ts && ts.toDate ? ts.toDate() : new Date(ts || Date.now()); return d.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }); }
+function escapeHtml(str){ const div = document.createElement('div'); div.textContent = str || ''; return div.innerHTML; }
 
-function fmtDate(ts){
-  const d = ts && ts.toDate ? ts.toDate() : new Date(ts || Date.now());
-  return d.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
-}
-
-function escapeHtml(str){
-  const div = document.createElement('div');
-  div.textContent = str || '';
-  return div.innerHTML;
-}
-
-// ---------- image handling: resize + compress client-side, store as base64 ----------
 function resizeAndEncode(file, maxDim, quality){
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -173,8 +117,7 @@ function resizeAndEncode(file, maxDim, quality){
       let { width, height } = img;
       if(width > maxDim || height > maxDim){
         const scale = maxDim / Math.max(width, height);
-        width = Math.round(width * scale);
-        height = Math.round(height * scale);
+        width = Math.round(width * scale); height = Math.round(height * scale);
       }
       const canvas = document.createElement('canvas');
       canvas.width = width; canvas.height = height;
@@ -182,585 +125,477 @@ function resizeAndEncode(file, maxDim, quality){
       URL.revokeObjectURL(url);
       resolve(canvas.toDataURL('image/jpeg', quality));
     };
-    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Could not read image')); };
+    img.onerror = () => reject(new Error());
     img.src = url;
   });
 }
-
 async function encodeImageForFirestore(file){
   let dataUrl = await resizeAndEncode(file, 900, 0.72);
   if(dataUrl.length > 900000) dataUrl = await resizeAndEncode(file, 700, 0.5);
-  if(dataUrl.length > 900000) throw new Error('Image too large even after compression');
   return dataUrl;
 }
 
-// wires a file input to a live preview + returns the encoded data URL via onEncoded
-function setupPhotoInput(inputEl, previewWrap, previewImg, removeBtn, msgEl, onEncoded){
+function setupPhotoInput(inputEl, previewWrap, previewImg, removeBtn, onEncoded){
+  if(!inputEl) return;
   inputEl.addEventListener('change', async () => {
     const f = inputEl.files[0];
     if(!f) return;
-    if(f.size > 10 * 1024 * 1024){
-      if(msgEl){ msgEl.textContent = 'Image is too large — please pick one under 10MB.'; msgEl.className = 'form-msg err'; }
-      inputEl.value = '';
-      return;
-    }
-    if(msgEl){ msgEl.textContent = 'Processing image…'; msgEl.className = 'form-msg'; }
-    try{
-      const dataUrl = await encodeImageForFirestore(f);
-      onEncoded(dataUrl);
-      previewImg.src = dataUrl;
-      previewWrap.style.display = 'flex';
-      if(msgEl){ msgEl.textContent = ''; msgEl.className = 'form-msg'; }
-    }catch(err){
-      console.error(err);
-      if(msgEl){ msgEl.textContent = 'Could not process that image — try a different one.'; msgEl.className = 'form-msg err'; }
-      inputEl.value = '';
-    }
+    try{ const dataUrl = await encodeImageForFirestore(f); onEncoded(dataUrl); previewImg.src = dataUrl; previewWrap.style.display = 'flex'; }catch(err){}
   });
-  removeBtn.addEventListener('click', () => {
-    inputEl.value = '';
-    previewWrap.style.display = 'none';
-    onEncoded(null);
-  });
+  removeBtn.addEventListener('click', () => { inputEl.value = ''; previewWrap.style.display = 'none'; onEncoded(null); });
 }
 
-setupPhotoInput(
-  document.getElementById('pImage'), document.getElementById('pImagePreview'),
-  document.getElementById('pImagePreviewImg'), document.getElementById('pImageRemove'),
-  postMsg, (data) => { pendingPostImage = data; }
-);
-setupPhotoInput(
-  document.getElementById('mPhoto'), document.getElementById('mPhotoPreview'),
-  document.getElementById('mPhotoPreviewImg'), document.getElementById('mPhotoRemove'),
-  document.getElementById('teamMsg'), (data) => { pendingMemberPhoto = data; }
-);
+let pendingPostImage = null; let pendingMemberPhoto = null;
+setupPhotoInput(document.getElementById('pImage'), document.getElementById('pImagePreview'), document.getElementById('pImagePreviewImg'), document.getElementById('pImageRemove'), (d) => pendingPostImage = d);
+setupPhotoInput(document.getElementById('mPhoto'), document.getElementById('mPhotoPreview'), document.getElementById('mPhotoPreviewImg'), document.getElementById('mPhotoRemove'), (d) => pendingMemberPhoto = d);
 
-function renderPosts(posts, flashTop){
-  if(!posts || posts.length === 0){
-    blogList.innerHTML = '<div class="empty-state">No posts yet. Be the first to log a build update.</div>';
-    return;
-  }
+// --- FIREBASE: BLOG ---
+const blogList = document.getElementById('blogList');
+onSnapshot(query(postsRef, orderBy('createdAt', 'desc')), (snapshot) => {
+  if(!blogList) return;
+  const posts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  if(!posts.length) { blogList.innerHTML = `<div class="empty-state">No posts yet. Be the first to log a build update.</div>`; return; }
   blogList.innerHTML = posts.map(p => `
-    <article class="post" data-id="${p.id}">
-      ${p.image ? `<div class="post-image-wrap"><img class="post-image" src="${p.image}" alt="" loading="lazy"></div>` : ''}
-      <div class="post-head">
-        <div>
-          <div class="post-meta"><span>${fmtDate(p.createdAt)}</span><span>·</span><span>${escapeHtml(p.author || 'Team')}</span>${p.tag ? `<span>·</span><span class="post-tag">${escapeHtml(p.tag)}</span>` : ''}</div>
-          <div class="post-title">${escapeHtml(p.title)}</div>
-        </div>
-        <span class="chevron">▾</span>
-      </div>
+    <article class="post">
+      ${p.image ? `<div class="post-image-wrap"><img src="${p.image}" class="post-image"></div>` : ''}
+      <div class="post-head"><div><div class="post-meta"><span>${fmtDate(p.createdAt)}</span><span>·</span><span>${escapeHtml(p.author || 'Team')}</span>${p.tag ? `<span>·</span><span class="post-tag">${escapeHtml(p.tag)}</span>` : ''}</div><div class="post-title">${escapeHtml(p.title)}</div></div><i data-lucide="chevron-down" class="chevron"></i></div>
       <div class="post-body">${escapeHtml(p.body)}</div>
-    </article>
-  `).join('');
+    </article>`).join('');
+  lucide.createIcons();
+  blogList.querySelectorAll('.post').forEach(el => { el.addEventListener('click', () => el.classList.toggle('open')); });
+});
 
-  blogList.querySelectorAll('.post').forEach(el => {
-    el.addEventListener('click', () => el.classList.toggle('open'));
-  });
-
-  if(flashTop){
-    const top = blogList.querySelector('.post');
-    if(top) top.classList.add('post-new');
-  }
-}
-
-// live-updating blog feed
-function subscribeToPosts(){
-  try{
-    const q = query(postsRef, orderBy('createdAt', 'desc'));
-    onSnapshot(q, (snapshot) => {
-      const posts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      renderPosts(posts, hasRenderedOnce && flashTopOnNextRender);
-      hasRenderedOnce = true;
-      flashTopOnNextRender = false;
-    }, (err) => {
-      console.error('Firestore read error:', err);
-      blogList.innerHTML = '<div class="empty-state">Couldn\'t load posts — check the Firebase config in script.js.</div>';
-    });
-  }catch(err){
-    console.error(err);
-    blogList.innerHTML = '<div class="empty-state">Couldn\'t load posts — check the Firebase config in script.js.</div>';
-  }
-}
-subscribeToPosts();
-
-// ---------- team roster: Firebase-backed ----------
+// --- FIREBASE: TEAM (BULLETPROOF SWIPER ROUTING) ---
 const teamGrid = document.getElementById('teamGrid');
+let teamSwiper;
 
-function initials(name){
-  return (name || '').trim().split(/\s+/).slice(0, 2).map(w => w[0] ? w[0].toUpperCase() : '').join('') || '?';
+function initTeamSwiper() {
+  if (teamSwiper) teamSwiper.destroy(true, true);
+  teamSwiper = new Swiper('.team-swiper', {
+    effect: 'coverflow',
+    grabCursor: true,
+    centeredSlides: true,
+    slidesPerView: 'auto',
+    loop: false,
+    speed: 800,
+    autoplay: { delay: 3500, disableOnInteraction: true, pauseOnMouseEnter: true },
+    keyboard: { enabled: true },
+    navigation: { nextEl: '.swiper-button-next', prevEl: '.swiper-button-prev' },
+    coverflowEffect: { rotate: 20, stretch: 0, depth: 150, modifier: 1, slideShadows: true },
+    pagination: { el: '.swiper-pagination', clickable: true },
+    // Swiper's stock threshold is 5px, which is less than the drift of an
+    // ordinary hand clicking a mouse — so the carousel would slide out from
+    // under a click that was only ever meant as a click. Raising it means
+    // small movement is ignored entirely and the card you pressed is still
+    // the card you release on.
+    // Anything under this is discarded by Swiper before its short/long swipe
+    // logic ever sees it, so quick flicks stay available for browsing without
+    // hand-drift being able to masquerade as one.
+    threshold: 18,
+    longSwipesRatio: 0.2,
+    // No `on: { click }` here on purpose — see the plain click listener on
+    // teamGrid below for why.
+  });
 }
 
-function renderTeam(members){
-  const tickMembers = document.getElementById('tickMembers');
-  if(tickMembers){
-    const prev = parseInt(tickMembers.dataset.val || '0', 10);
-    const next = members ? members.length : 0;
-    tickMembers.dataset.val = next;
-    animateCount(tickMembers, prev, next, 0.8);
+// Navigation lives on a plain, native click listener on document (capture
+// phase), NOT Swiper's own `on: { click }` event. Swiper tracks touch/mouse
+// movement internally to tell a drag from a tap, and it turned out to
+// disqualify a click as a "drag" from even a few pixels of movement between
+// mousedown and mouseup — which is normal for a real hand on a mouse or
+// trackpad, so real users' clicks were silently swallowed even though the
+// browser's own native click event (which we use here instead) fired
+// correctly and landed on the right card the whole time.
+//
+// That means we need our own tap-vs-drag check. Rather than guess at a pixel
+// threshold, the primary test asks Swiper the question directly: did this
+// gesture actually browse the carousel? If the active slide changed between
+// pointerdown and click, it was a swipe — leave them where they navigated to.
+// If the carousel didn't move at all, the user was pointing at one card, and
+// that's a selection no matter how shaky the hand was holding the mouse. A
+// generous distance cap only catches the leftover case of a long drag that
+// snapped back to the same slide.
+//
+// This tracking uses the 'pointerdown' event, NOT 'mousedown'/'touchstart'.
+// Swiper calls preventDefault() on the underlying pointer event to stop
+// native drag/selection while dragging a slide — and per spec, that
+// suppresses the browser's synthesized "compatibility" mouse events
+// (mousedown/mouseup) for that whole gesture. 'pointerdown'/'pointerup'
+// are the real, un-suppressed events and fire reliably for mouse, touch,
+// and pen alike, which is why we use them here instead.
+const TEAM_DRAG_SLOP_PX = 40; // deliberately forgiving; see reasoning above
+let teamPointerDownPos = null;
+document.addEventListener('pointerdown', (e) => {
+  if (teamGrid.contains(e.target)) {
+    teamPointerDownPos = {
+      x: e.clientX,
+      y: e.clientY,
+      slide: teamSwiper ? teamSwiper.activeIndex : null,
+    };
   }
+}, true);
 
-  if(!members || members.length === 0){
-    teamGrid.innerHTML = '<div class="empty-state">No team members yet — be the first to add yourself.</div>';
+document.addEventListener('click', function(event) {
+  if (!teamGrid.contains(event.target)) return;
+  const downPos = teamPointerDownPos;
+  teamPointerDownPos = null;
+  if (downPos) {
+    // Did the carousel actually move? That's a browse gesture, not a pick.
+    const slideNow = teamSwiper ? teamSwiper.activeIndex : null;
+    if (downPos.slide !== null && slideNow !== null && slideNow !== downPos.slide) return;
+    // Otherwise only reject an implausibly long drag that happened to land
+    // back on the slide it started from.
+    const dist = Math.hypot(event.clientX - downPos.x, event.clientY - downPos.y);
+    if (dist > TEAM_DRAG_SLOP_PX) return;
+  }
+  let clickedCard = event.target.closest('.team-card');
+  let via = 'direct-hit';
+  if (!clickedCard) {
+    // The coverflow effect rotates off-center cards in 3D, which can make the
+    // browser resolve a click to the (invisible) swiper-wrapper behind the
+    // card instead of the card itself. Fallback: manually check every card's
+    // on-screen box for the actual click point, regardless of which element
+    // the browser thinks is "on top" there.
+    const candidates = Array.from(document.querySelectorAll('#teamGrid .team-card'))
+      .map(card => {
+        const rect = card.getBoundingClientRect();
+        const slide = card.closest('.swiper-slide');
+        const z = slide ? parseFloat(getComputedStyle(slide).zIndex) || 0 : 0;
+        return { card, rect, z };
+      })
+      .filter(({ rect }) => event.clientX >= rect.left && event.clientX <= rect.right && event.clientY >= rect.top && event.clientY <= rect.bottom)
+      .sort((a, b) => b.z - a.z);
+    if (candidates.length) { clickedCard = candidates[0].card; via = 'rect-fallback'; }
+    else { via = 'no-card-under-click'; }
+  }
+  // If the edit button was clicked, open edit modal instead of navigating to profile
+  const editBtn = event.target.closest('.team-card-edit-btn');
+  if (editBtn) {
+    event.stopPropagation();
+    event.preventDefault();
+    const memberId = editBtn.getAttribute('data-id');
+    openEditMemberModal(memberId);
     return;
   }
-  teamGrid.innerHTML = members.map(m => {
-    // backward-compatible: older docs may only have a single `vertical` string
+
+  // Diagnostic breadcrumb, timestamped so a stale one from an earlier click
+  // can never be mistaken for what just happened. Overwritten (or cleared)
+  // by member.js the moment it's read, so it can't linger and mislead.
+  try {
+    sessionStorage.setItem('lastTeamClickDebug', JSON.stringify({
+      at: new Date().toISOString(),
+      via,
+      target: event.target.className || event.target.tagName,
+      clientX: event.clientX, clientY: event.clientY,
+      memberId: clickedCard ? clickedCard.getAttribute('data-id') : null,
+      cardCount: document.querySelectorAll('#teamGrid .team-card').length,
+    }));
+  } catch (e) {}
+  if (clickedCard) {
+    const memberId = clickedCard.getAttribute('data-id');
+    if (memberId && memberId !== 'undefined') {
+      // Belt-and-suspenders: stash the id in sessionStorage as well as the
+      // URL. If anything between here and member.js loading strips or
+      // rewrites the query string (a dev-server auto-reload triggering
+      // mid-navigation is the prime suspect if this keeps happening),
+      // member.js can still recover the id this way instead of showing
+      // "Profile Not Found" for a click that actually worked.
+      try { sessionStorage.setItem('pendingProfileId', memberId); } catch (e) {}
+      window.location.href = `member.html?id=${memberId}`;
+    }
+  }
+}, true); // capture phase — Swiper's own internal click handling can call
+          // stopPropagation() on the bubble phase once it decides a gesture
+          // involved "too much" movement; running in capture means we see
+          // the click before that happens, regardless of what Swiper does
+          // with it afterward.
+
+function getRolePriority(role) {
+  if (!role) return 99;
+  const r = role.toLowerCase();
+  if (r === 'founder') return 1;
+  if (r.includes('lead')) return 2;
+  if (r.includes('driver')) return 3;
+  return 4;
+}
+
+function getRoleBadgeClass(role) {
+  if (!role) return '';
+  const r = role.toLowerCase();
+  if (r === 'founder') return 'founder';
+  if (r.includes('lead')) return 'lead';
+  if (r.includes('driver')) return 'driver';
+  return '';
+}
+
+let latestTeamMembers = [];
+
+function renderTeamGrid() {
+  if(!teamGrid) return;
+  if(!latestTeamMembers.length) { 
+    teamGrid.innerHTML = `<div class="empty-state" style="width:100%;text-align:center;">No team members yet.</div>`; 
+    return; 
+  }
+  
+  teamGrid.innerHTML = latestTeamMembers.map(m => {
     const verticals = Array.isArray(m.verticals) ? m.verticals : (m.vertical ? [m.vertical] : []);
+    const badgeHtml = (m.role && m.role !== 'Member') 
+      ? `<span class="team-badge ${getRoleBadgeClass(m.role)}">${escapeHtml(m.role)}</span>` 
+      : '';
+    const editBtnHtml = currentUser 
+      ? `<button class="team-card-edit-btn" data-id="${m.dbKey}" title="Edit tags & details"><i data-lucide="edit-3" style="width:12px;height:12px;"></i> Edit</button>` 
+      : '';
     return `
-    <div class="team-card">
-      <div class="team-avatar">${m.photo ? `<img src="${m.photo}" alt="${escapeHtml(m.name)}">` : escapeHtml(initials(m.name))}</div>
-      <div class="team-name">${escapeHtml(m.name)}</div>
-      ${m.role === 'Founder' ? '<span class="team-badge">Founder</span>' : ''}
-      <div class="team-verticals">${verticals.map(v => `<span class="team-vertical-tag">${escapeHtml(v)}</span>`).join('')}</div>
-      <div class="team-roll">${escapeHtml(m.rollNo || '')}</div>
-    </div>
-  `;
+    <div class="swiper-slide">
+      <!-- Attached the dbKey safely to data-id -->
+      <div class="team-card magnetic-el" data-id="${m.dbKey}" style="cursor:pointer;">
+        ${editBtnHtml}
+        <div class="team-avatar">${m.photo ? `<img src="${m.photo}">` : escapeHtml((m.name || '?')[0].toUpperCase())}</div>
+        <h3 class="team-name">${escapeHtml(m.name)}</h3>
+        ${badgeHtml}
+        <div class="team-verticals">${verticals.map(v => `<span class="team-tag">${escapeHtml(v)}</span>`).join('')}</div>
+      </div>
+    </div>`;
   }).join('');
+  
+  safe('lucide in team cards', () => lucide.createIcons());
+  setTimeout(initTeamSwiper, 100);
 }
 
-function subscribeToTeam(){
-  try{
-    const q = query(teamRef, orderBy('createdAt', 'asc'));
-    onSnapshot(q, (snapshot) => {
-      const members = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      members.sort((a, b) => (a.role === 'Founder' ? 0 : 1) - (b.role === 'Founder' ? 0 : 1));
-      renderTeam(members);
-    }, (err) => {
-      console.error('Team read error:', err);
-      teamGrid.innerHTML = '<div class="empty-state">Couldn\'t load the team — check Firestore rules.</div>';
-    });
-  }catch(err){
-    console.error(err);
-    teamGrid.innerHTML = '<div class="empty-state">Couldn\'t load the team — check Firestore rules.</div>';
-  }
-}
-subscribeToTeam();
+onSnapshot(query(teamRef, orderBy('createdAt', 'asc')), (snapshot) => {
+  // Extract doc.id safely as dbKey
+  latestTeamMembers = snapshot.docs.map(doc => {
+    return { dbKey: doc.id, ...doc.data() }; 
+  });
+  
+  latestTeamMembers.sort((a, b) => {
+    const diff = getRolePriority(a.role) - getRolePriority(b.role);
+    if (diff !== 0) return diff;
+    return (a.name || '').localeCompare(b.name || '');
+  });
+  const tickMembers = document.getElementById('tickMembers');
+  if(tickMembers) animateCount(tickMembers, parseInt(tickMembers.textContent) || 0, latestTeamMembers.length || 0);
 
-// ---------- announcements: Firebase-backed, public read, sign-in required to post ----------
+  renderTeamGrid();
+});
+
+// --- FIREBASE: ANNOUNCEMENTS ---
 const announceList = document.getElementById('announceList');
-const newAnnouncementBtn = document.getElementById('newAnnouncementBtn');
 const navAnnounceAlert = document.getElementById('navAnnounceAlert');
-
-function renderAnnouncements(items){
-  if(!items || items.length === 0){
-    announceList.innerHTML = '<div class="empty-state">No announcements yet.</div>';
-    navAnnounceAlert.style.display = 'none';
-    return;
-  }
+onSnapshot(query(announcementsRef, orderBy('createdAt', 'desc')), (snapshot) => {
+  if(!announceList) return;
+  const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  if(!items.length) { announceList.innerHTML = `<div class="empty-state">No announcements yet.</div>`; if(navAnnounceAlert) navAnnounceAlert.style.display = 'none'; return; }
   announceList.innerHTML = items.map(a => `
     <div class="announce-card ${a.priority === 'urgent' ? 'urgent' : ''}">
-      <div class="announce-head">
-        <span class="announce-badge ${a.priority === 'urgent' ? 'urgent' : ''}">${a.priority === 'urgent' ? 'Urgent' : 'Notice'}</span>
-        <span class="announce-date">${fmtDate(a.createdAt)}</span>
-      </div>
-      <div class="announce-title">${escapeHtml(a.title)}</div>
-      <div class="announce-body">${escapeHtml(a.body)}</div>
-      <div class="announce-author">— ${escapeHtml(a.author || 'Team')}</div>
-    </div>
-  `).join('');
-  navAnnounceAlert.style.display = items.some(a => a.priority === 'urgent') ? 'inline-block' : 'none';
-}
+      <div class="announce-head"><span class="announce-badge ${a.priority === 'urgent' ? 'urgent' : ''}">${a.priority === 'urgent' ? 'Urgent' : 'Notice'}</span><span class="announce-date">${fmtDate(a.createdAt)}</span></div>
+      <h3 class="announce-title">${escapeHtml(a.title)}</h3><p class="announce-body">${escapeHtml(a.body)}</p><div class="announce-author">— ${escapeHtml(a.author || 'Team')}</div>
+    </div>`).join('');
+  if(navAnnounceAlert) navAnnounceAlert.style.display = items.some(a => a.priority === 'urgent') ? 'inline-block' : 'none';
+});
 
-function subscribeToAnnouncements(){
-  try{
-    const q = query(announcementsRef, orderBy('createdAt', 'desc'));
-    onSnapshot(q, (snapshot) => {
-      const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      renderAnnouncements(items);
-    }, (err) => {
-      console.error('Announcements read error:', err);
-      announceList.innerHTML = `<div class="empty-state">Couldn't load announcements (${err.code || err.message}).</div>`;
-    });
-  }catch(err){
-    console.error(err);
-    announceList.innerHTML = `<div class="empty-state">Couldn't load announcements (${err.code || err.message}).</div>`;
+// --- FIREBASE: ROADMAP ---
+onSnapshot(roadmapDocRef, (docSnap) => {
+  const states = docSnap.exists() ? docSnap.data() : {};
+  for(let i = 1; i <= 7; i++) {
+    const stepEl = document.querySelector(`.rstep[data-n="${i}"]`);
+    if(!stepEl) continue;
+    const state = states[i] !== undefined ? states[i] : 1; 
+    stepEl.classList.remove('done', 'in-progress');
+    const tag = stepEl.querySelector('.rtag');
+    if(state === 2) { stepEl.classList.add('done'); tag.textContent = 'Completed'; } 
+    else if(state === 0) { stepEl.classList.add('in-progress'); tag.textContent = 'In Progress'; } 
+    else { tag.textContent = 'Upcoming'; }
   }
-}
-subscribeToAnnouncements();
+});
 
-// ---------- auth state ----------
+// --- AUTH & MODAL CONTROLS ---
+let currentUser = null;
 onAuthStateChanged(auth, (user) => {
   currentUser = user;
-  authStatus.classList.add('fade-out');
-  setTimeout(() => {
-    if(user){
-      authStatus.innerHTML = `<span class="live-dot"></span>Signed in as ${escapeHtml(user.email)} · <a href="admin.html">Applications</a> · <button id="signOutBtn">Sign out</button>`;
-      document.getElementById('signOutBtn').addEventListener('click', () => signOut(auth));
-    }else{
-      authStatus.innerHTML = '';
-    }
-    authStatus.classList.remove('fade-out');
-  }, 160);
+  renderTeamGrid();
+  const authStatus = document.getElementById('authStatus');
+  if(!authStatus) return;
+  if(user){
+    authStatus.innerHTML = `<span class="live-dot"></span>Signed in as ${escapeHtml(user.email)} · <a href="admin.html">Applications</a> · <button id="signOutBtn" style="color:var(--accent);">Sign out</button>`;
+    document.getElementById('signOutBtn')?.addEventListener('click', () => signOut(auth));
+  }else{ authStatus.innerHTML = ''; }
 });
 
-// ---------- modal open/close ----------
-// reveals the right step once we know the visitor is signed in
-function showAuthedStep(){
-  signInStep.style.display = 'none';
-  postStep.style.display = 'none';
-  teamStep.style.display = 'none';
-  announceStep.style.display = 'none';
-  if(pendingAction === 'team'){
-    teamStep.style.display = 'block';
-    modalTitle.textContent = 'Add Team Member';
-    document.getElementById('mName').focus();
-  }else if(pendingAction === 'announcement'){
-    announceStep.style.display = 'block';
-    modalTitle.textContent = 'Post Announcement';
-    document.getElementById('anTitle').focus();
-  }else{
-    postStep.style.display = 'block';
-    modalTitle.textContent = 'New Blog Post';
-    document.getElementById('pTitle').focus();
-  }
-}
+const modalBackdrop = document.getElementById('modalBackdrop');
+const applyModalBackdrop = document.getElementById('applyModalBackdrop');
+let pendingAction = 'post';
 
-// mobile Safari/Chrome let the page scroll behind a fixed-position modal
-// unless the body itself is locked while it's open
-function lockBodyScroll(){ document.body.style.overflow = 'hidden'; }
-function unlockBodyScroll(){ document.body.style.overflow = ''; }
+function showAuthedStep(){
+  ['signInStep', 'postStep', 'teamStep', 'editTeamStep', 'announceStep', 'roadmapStep'].forEach(id => { const el = document.getElementById(id); if(el) el.style.display = 'none'; });
+  if(pendingAction === 'team'){ document.getElementById('teamStep').style.display = 'block'; document.getElementById('modalTitle').textContent = 'Add Team Member'; }
+  else if(pendingAction === 'announcement'){ document.getElementById('announceStep').style.display = 'block'; document.getElementById('modalTitle').textContent = 'Post Announcement'; }
+  else if(pendingAction === 'roadmap'){ document.getElementById('roadmapStep').style.display = 'block'; document.getElementById('modalTitle').textContent = 'Update Roadmap Status'; }
+  else{ document.getElementById('postStep').style.display = 'block'; document.getElementById('modalTitle').textContent = 'New Blog Post'; }
+}
 
 function openTeamOrPostModal(action){
-  pendingAction = action;
-  modalBackdrop.classList.add('show');
-  lockBodyScroll();
-  if(currentUser){
-    showAuthedStep();
-  }else{
-    modalTitle.textContent = 'Team Sign In';
-    signInStep.style.display = 'block';
-    postStep.style.display = 'none';
-    teamStep.style.display = 'none';
-    announceStep.style.display = 'none';
-    emailInput.value = '';
-    passInput.value = '';
-    signInMsg.textContent = '';
-    emailInput.focus();
+  pendingAction = action; modalBackdrop.classList.add('show');
+  if(currentUser){ showAuthedStep(); }
+  else{
+    document.getElementById('modalTitle').textContent = 'Team Sign In';
+    ['signInStep', 'postStep', 'teamStep', 'editTeamStep', 'announceStep', 'roadmapStep'].forEach(id => { const el = document.getElementById(id); if(el) el.style.display = 'none'; });
+    document.getElementById('signInStep').style.display = 'block';
   }
 }
 
-newPostBtn.addEventListener('click', () => openTeamOrPostModal('post'));
-const addTeamBtn = document.getElementById('addTeamBtn');
-if(addTeamBtn) addTeamBtn.addEventListener('click', () => openTeamOrPostModal('team'));
-newAnnouncementBtn.addEventListener('click', () => openTeamOrPostModal('announcement'));
+function openEditMemberModal(memberId) {
+  const member = latestTeamMembers.find(m => m.dbKey === memberId);
+  if (!member) return;
+  document.getElementById('editMId').value = memberId;
+  document.getElementById('editMName').value = member.name || '';
+  document.getElementById('editMRoll').value = member.rollNo || '';
+  document.getElementById('editMRole').value = member.role || 'Member';
+  document.getElementById('editMBio').value = member.bio || '';
+  const editMsg = document.getElementById('editTeamMsg');
+  if (editMsg) { editMsg.textContent = ''; editMsg.className = 'form-msg'; }
 
-function closeModal(){ modalBackdrop.classList.remove('show'); unlockBodyScroll(); }
-document.getElementById('cancelSignIn').addEventListener('click', closeModal);
-document.getElementById('cancelPost').addEventListener('click', closeModal);
-document.getElementById('cancelTeam').addEventListener('click', closeModal);
-document.getElementById('cancelAnnounce').addEventListener('click', closeModal);
-modalBackdrop.addEventListener('click', (e) => { if(e.target === modalBackdrop) closeModal(); });
+  const currentVerticals = Array.isArray(member.verticals) ? member.verticals : (member.vertical ? [member.vertical] : []);
+  const editBoxes = document.querySelectorAll('#editMVerticalMulti input[type="checkbox"]');
+  editBoxes.forEach(cb => {
+    cb.checked = currentVerticals.includes(cb.value);
+  });
 
-// ---------- sign in ----------
+  ['signInStep', 'postStep', 'teamStep', 'editTeamStep', 'announceStep', 'roadmapStep'].forEach(id => { 
+    const el = document.getElementById(id); 
+    if(el) el.style.display = 'none'; 
+  });
+  document.getElementById('editTeamStep').style.display = 'block';
+  document.getElementById('modalTitle').textContent = 'Edit Team Member';
+  modalBackdrop.classList.add('show');
+}
+
+document.getElementById('newPostBtn')?.addEventListener('click', () => openTeamOrPostModal('post'));
+document.getElementById('addTeamBtn')?.addEventListener('click', () => openTeamOrPostModal('team'));
+document.getElementById('newAnnouncementBtn')?.addEventListener('click', () => openTeamOrPostModal('announcement'));
+document.getElementById('updateRoadmapBtn')?.addEventListener('click', () => openTeamOrPostModal('roadmap'));
+
+document.querySelectorAll('.close-modal-btn, .btn-cancel, #cancelSignIn, #cancelEditTeam').forEach(btn => {
+  btn.addEventListener('click', () => { modalBackdrop.classList.remove('show'); applyModalBackdrop.classList.remove('show'); });
+});
+
 document.getElementById('doSignIn').addEventListener('click', async () => {
-  const email = emailInput.value.trim();
-  const pass = passInput.value;
-  if(!email || !pass){
-    signInMsg.textContent = 'Enter both email and password.';
-    return;
-  }
-  const btn = document.getElementById('doSignIn');
-  btn.disabled = true;
-  signInMsg.textContent = 'Signing in…';
-  signInMsg.className = 'form-msg';
-  try{
-    await signInWithEmailAndPassword(auth, email, pass);
-    const modalEl = modalBackdrop.querySelector('.modal');
-    modalEl.classList.add('success-flash');
-    setTimeout(() => modalEl.classList.remove('success-flash'), 650);
-    showAuthedStep();
-  }catch(err){
-    signInMsg.textContent = 'Sign-in failed — check the email/password, or ask a lead to create your account.';
-    signInMsg.className = 'form-msg err';
-    const modalEl = modalBackdrop.querySelector('.modal');
-    modalEl.classList.remove('shake');
-    void modalEl.offsetWidth;
-    modalEl.classList.add('shake');
-  }finally{
-    btn.disabled = false;
-  }
+  const msg = document.getElementById('signInMsg');
+  try { await signInWithEmailAndPassword(auth, document.getElementById('emailInput').value, document.getElementById('passInput').value); showAuthedStep(); } 
+  catch (err) { msg.textContent = "Sign-in failed — check credentials."; }
 });
-passInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') document.getElementById('doSignIn').click(); });
 
-// ---------- publish post ----------
 document.getElementById('publishPost').addEventListener('click', async () => {
-  const title = document.getElementById('pTitle').value.trim();
-  const author = document.getElementById('pAuthor').value.trim();
-  const tag = document.getElementById('pTag').value.trim();
-  const body = document.getElementById('pBody').value.trim();
-
-  if(!title || !body){
-    postMsg.textContent = 'Title and post body are required.';
-    postMsg.className = 'form-msg err';
-    return;
-  }
-  if(!currentUser){
-    postMsg.textContent = 'You were signed out — please sign in again.';
-    postMsg.className = 'form-msg err';
-    return;
-  }
-
-  const btn = document.getElementById('publishPost');
-  btn.disabled = true;
-  postMsg.textContent = 'Publishing…';
-  postMsg.className = 'form-msg';
-
-  try{
-    await addDoc(postsRef, {
-      title, author, tag, body,
-      image: pendingPostImage || null,
-      createdAt: serverTimestamp(),
-      authorUid: currentUser.uid
-    });
-    flashTopOnNextRender = true;
-    postMsg.textContent = 'Published!';
-    postMsg.className = 'form-msg ok';
-    setTimeout(() => {
-      closeModal();
-      document.getElementById('pTitle').value = '';
-      document.getElementById('pAuthor').value = '';
-      document.getElementById('pTag').value = '';
-      document.getElementById('pBody').value = '';
-      document.getElementById('pImage').value = '';
-      document.getElementById('pImagePreview').style.display = 'none';
-      pendingPostImage = null;
-      postMsg.textContent = '';
-    }, 700);
-  }catch(err){
-    console.error(err);
-    postMsg.textContent = `Something went wrong publishing (${err.code || err.message}).`;
-    postMsg.className = 'form-msg err';
-  }finally{
-    btn.disabled = false;
-  }
+  const title = document.getElementById('pTitle').value.trim(); const author = document.getElementById('pAuthor').value.trim(); const tag = document.getElementById('pTag').value.trim(); const body = document.getElementById('pBody').value.trim();
+  if(!title || !body) return;
+  try{ await addDoc(postsRef, { title, author, tag, body, image: pendingPostImage || null, createdAt: serverTimestamp(), authorUid: currentUser.uid }); modalBackdrop.classList.remove('show'); document.getElementById('pTitle').value = ''; document.getElementById('pBody').value = ''; }catch(err){}
 });
 
-// ---------- add team member ----------
-const mName = document.getElementById('mName');
-const mRoll = document.getElementById('mRoll');
-const mVertical = document.getElementById('mVertical');
+const mRole = document.getElementById('mRole');
 const mVerticalSingleWrap = document.getElementById('mVerticalSingleWrap');
 const mVerticalMultiWrap = document.getElementById('mVerticalMultiWrap');
 const mVerticalMultiBoxes = document.querySelectorAll('#mVerticalMulti input[type="checkbox"]');
-const mRole = document.getElementById('mRole');
-const teamMsg = document.getElementById('teamMsg');
-const submitTeamBtn = document.getElementById('submitTeam');
 
-// Founders can pick multiple verticals; everyone else picks one.
-function updateVerticalPickerForRole(){
-  if(mRole.value === 'Founder'){
-    mVerticalSingleWrap.style.display = 'none';
-    mVerticalMultiWrap.style.display = 'block';
-    mVertical.value = '';
-  }else{
-    mVerticalMultiWrap.style.display = 'none';
-    mVerticalSingleWrap.style.display = 'block';
-    mVerticalMultiBoxes.forEach(cb => { cb.checked = false; });
-  }
+function isMultiVerticalRole(role) {
+  if (!role) return false;
+  const r = role.toLowerCase();
+  return r === 'founder' || r.includes('lead');
 }
-mRole.addEventListener('change', updateVerticalPickerForRole);
-updateVerticalPickerForRole();
 
-submitTeamBtn.addEventListener('click', async () => {
-  const name = mName.value.trim();
-  const rollNo = mRoll.value.trim();
-  const role = mRole.value;
-  const verticals = role === 'Founder'
-    ? Array.from(mVerticalMultiBoxes).filter(cb => cb.checked).map(cb => cb.value)
-    : (mVertical.value ? [mVertical.value] : []);
-
-  if(!name || !rollNo || verticals.length === 0){
-    teamMsg.textContent = role === 'Founder'
-      ? 'Please fill in name, roll number, and pick at least one vertical.'
-      : 'Please fill in name, roll number, and vertical.';
-    teamMsg.className = 'form-msg err';
-    return;
-  }
-  if(!currentUser){
-    teamMsg.textContent = 'You were signed out — please sign in again.';
-    teamMsg.className = 'form-msg err';
-    return;
-  }
-
-  submitTeamBtn.disabled = true;
-  teamMsg.textContent = 'Adding…';
-  teamMsg.className = 'form-msg';
-
-  try{
-    await addDoc(teamRef, {
-      name, rollNo, verticals, role,
-      photo: pendingMemberPhoto || null,
-      createdAt: serverTimestamp(),
-      addedByUid: currentUser.uid
-    });
-    teamMsg.textContent = 'Added to the roster!';
-    teamMsg.className = 'form-msg ok';
-    setTimeout(() => {
-      closeModal();
-      mName.value = ''; mRoll.value = ''; mVertical.value = ''; mRole.value = 'Member';
-      updateVerticalPickerForRole();
-      document.getElementById('mPhoto').value = '';
-      document.getElementById('mPhotoPreview').style.display = 'none';
-      pendingMemberPhoto = null;
-      teamMsg.textContent = '';
-    }, 900);
-  }catch(err){
-    console.error(err);
-    teamMsg.textContent = `Something went wrong (${err.code || err.message}). Check that the "team" rule is published in Firestore.`;
-    teamMsg.className = 'form-msg err';
-    const modalEl = modalBackdrop.querySelector('.modal');
-    modalEl.classList.remove('shake');
-    void modalEl.offsetWidth;
-    modalEl.classList.add('shake');
-  }finally{
-    submitTeamBtn.disabled = false;
+if(mRole) mRole.addEventListener('change', () => {
+  if(isMultiVerticalRole(mRole.value)){ 
+    mVerticalSingleWrap.style.display = 'none'; 
+    mVerticalMultiWrap.style.display = 'block'; 
+  } else { 
+    mVerticalMultiWrap.style.display = 'none'; 
+    mVerticalSingleWrap.style.display = 'block'; 
   }
 });
 
-// ---------- post announcement ----------
+document.getElementById('submitTeam').addEventListener('click', async () => {
+  const name = document.getElementById('mName').value.trim(); 
+  const rollNo = document.getElementById('mRoll').value.trim(); 
+  const role = mRole.value; 
+  const bio = document.getElementById('mBio').value.trim();
+  const multiMode = isMultiVerticalRole(role) || (mVerticalMultiWrap && mVerticalMultiWrap.style.display === 'block');
+  const verticals = multiMode 
+    ? Array.from(mVerticalMultiBoxes).filter(cb => cb.checked).map(cb => cb.value) 
+    : (document.getElementById('mVertical').value ? [document.getElementById('mVertical').value] : []);
+  if(!name || !rollNo || verticals.length === 0) return;
+  try{ 
+    await addDoc(teamRef, { name, rollNo, verticals, role, bio, photo: pendingMemberPhoto || null, createdAt: serverTimestamp(), addedByUid: currentUser.uid }); 
+    modalBackdrop.classList.remove('show'); 
+  }catch(err){}
+});
+
+document.getElementById('saveEditTeam')?.addEventListener('click', async () => {
+  const id = document.getElementById('editMId').value;
+  const name = document.getElementById('editMName').value.trim();
+  const rollNo = document.getElementById('editMRoll').value.trim();
+  const role = document.getElementById('editMRole').value;
+  const bio = document.getElementById('editMBio').value.trim();
+  const editBoxes = document.querySelectorAll('#editMVerticalMulti input[type="checkbox"]');
+  const verticals = Array.from(editBoxes).filter(cb => cb.checked).map(cb => cb.value);
+  const msg = document.getElementById('editTeamMsg');
+  const saveBtn = document.getElementById('saveEditTeam');
+
+  if (!name || !rollNo || verticals.length === 0) {
+    if (msg) {
+      msg.textContent = 'Please provide name, roll number, and at least one vertical tag.';
+      msg.className = 'form-msg err';
+    }
+    return;
+  }
+
+  if (saveBtn) saveBtn.disabled = true;
+  if (msg) {
+    msg.textContent = 'Saving changes...';
+    msg.className = 'form-msg';
+  }
+
+  try {
+    await updateDoc(doc(db, "team", id), {
+      name,
+      rollNo,
+      role,
+      verticals,
+      bio,
+      updatedAt: serverTimestamp(),
+      lastUpdatedByUid: currentUser?.uid || null
+    });
+    modalBackdrop.classList.remove('show');
+  } catch (err) {
+    console.error('Error updating member:', err);
+    if (msg) {
+      msg.textContent = 'Failed to save changes: ' + (err.message || err.code);
+      msg.className = 'form-msg err';
+    }
+  } finally {
+    if (saveBtn) saveBtn.disabled = false;
+  }
+});
+
 document.getElementById('publishAnnounce').addEventListener('click', async () => {
-  const anTitle = document.getElementById('anTitle');
-  const anPriority = document.getElementById('anPriority');
-  const anBody = document.getElementById('anBody');
-  const announceMsg = document.getElementById('announceMsg');
-
-  const title = anTitle.value.trim();
-  const priority = anPriority.value;
-  const body = anBody.value.trim();
-
-  if(!title || !body){
-    announceMsg.textContent = 'Title and message are required.';
-    announceMsg.className = 'form-msg err';
-    return;
-  }
-  if(!currentUser){
-    announceMsg.textContent = 'You were signed out — please sign in again.';
-    announceMsg.className = 'form-msg err';
-    return;
-  }
-
-  const btn = document.getElementById('publishAnnounce');
-  btn.disabled = true;
-  announceMsg.textContent = 'Posting…';
-  announceMsg.className = 'form-msg';
-
-  try{
-    await addDoc(announcementsRef, {
-      title, priority, body,
-      author: currentUser.email,
-      authorUid: currentUser.uid,
-      createdAt: serverTimestamp()
-    });
-    announceMsg.textContent = 'Posted!';
-    announceMsg.className = 'form-msg ok';
-    setTimeout(() => {
-      closeModal();
-      anTitle.value = ''; anPriority.value = 'normal'; anBody.value = '';
-      announceMsg.textContent = '';
-    }, 700);
-  }catch(err){
-    console.error(err);
-    announceMsg.textContent = `Something went wrong posting (${err.code || err.message}).`;
-    announceMsg.className = 'form-msg err';
-    const modalEl = modalBackdrop.querySelector('.modal');
-    modalEl.classList.remove('shake');
-    void modalEl.offsetWidth;
-    modalEl.classList.add('shake');
-  }finally{
-    btn.disabled = false;
-  }
+  const title = document.getElementById('anTitle').value.trim(); const priority = document.getElementById('anPriority').value; const body = document.getElementById('anBody').value.trim();
+  if(!title || !body) return;
+  try{ await addDoc(announcementsRef, { title, priority, body, author: currentUser.email, authorUid: currentUser.uid, createdAt: serverTimestamp() }); modalBackdrop.classList.remove('show'); }catch(err){}
 });
 
-// ---------- join application: Firestore-backed ----------
-const applyModalBackdrop = document.getElementById('applyModalBackdrop');
-const aName = document.getElementById('aName');
-const aEmail = document.getElementById('aEmail');
-const aBranch = document.getElementById('aBranch');
-const aRoll = document.getElementById('aRoll');
-const aVertical = document.getElementById('aVertical');
-const aWhy = document.getElementById('aWhy');
-const applyMsg = document.getElementById('applyMsg');
-const submitApplyBtn = document.getElementById('submitApply');
-
-function openApplyModal(prefillVertical){
-  aName.value = ''; aEmail.value = ''; aBranch.value = ''; aRoll.value = ''; aWhy.value = '';
-  aVertical.value = prefillVertical || '';
-  applyMsg.textContent = '';
-  applyMsg.className = 'form-msg';
-  applyModalBackdrop.classList.add('show');
-  lockBodyScroll();
-  aName.focus();
-}
-function closeApplyModal(){ applyModalBackdrop.classList.remove('show'); unlockBodyScroll(); }
-
-// nav + hero "Join The Team" buttons open the application form directly
-[document.getElementById('navJoinBtn'), document.getElementById('heroJoinBtn')].forEach(btn => {
-  if(!btn) return;
-  btn.addEventListener('click', (e) => {
-    e.preventDefault();
-    openApplyModal();
-  });
+document.getElementById('publishRoadmap')?.addEventListener('click', async () => {
+  const stepNum = document.getElementById('rStepNum').value; const statusVal = parseInt(document.getElementById('rStatus').value, 10);
+  try{ await setDoc(roadmapDocRef, { [stepNum]: statusVal }, { merge: true }); modalBackdrop.classList.remove('show'); }catch(err){}
 });
 
-// "Apply Now" in the join section header
-const applyNowBtn = document.getElementById('applyNowBtn');
-if(applyNowBtn) applyNowBtn.addEventListener('click', () => openApplyModal());
+const aName = document.getElementById('aName'); const aEmail = document.getElementById('aEmail'); const aBranch = document.getElementById('aBranch'); const aRoll = document.getElementById('aRoll'); const aVertical = document.getElementById('aVertical'); const aWhy = document.getElementById('aWhy'); const applyMsg = document.getElementById('applyMsg'); const submitApplyBtn = document.getElementById('submitApply');
+function openApplyModal(prefillVertical){ if(aName) aName.value = ''; if(aEmail) aEmail.value = ''; if(aBranch) aBranch.value = ''; if(aRoll) aRoll.value = ''; if(aWhy) aWhy.value = ''; if(aVertical) aVertical.value = prefillVertical || ''; if(applyMsg) applyMsg.textContent = ''; applyModalBackdrop.classList.add('show'); }
 
-// per sub-team "Apply →" buttons, prefilled with that vertical
-document.querySelectorAll('.join-apply').forEach(btn => {
-  btn.addEventListener('click', () => openApplyModal(btn.dataset.vertical));
+[document.getElementById('navJoinBtn'), document.getElementById('heroJoinBtn'), document.getElementById('applyNowBtn')].forEach(btn => { if(btn) btn.addEventListener('click', (e) => { e.preventDefault(); openApplyModal(); }); });
+document.querySelectorAll('.join-apply').forEach(btn => { btn.addEventListener('click', () => openApplyModal(btn.dataset.vertical)); });
+
+submitApplyBtn?.addEventListener('click', async () => {
+  const name = aName.value.trim(); const email = aEmail.value.trim(); const branch = aBranch.value.trim(); const roll = aRoll.value.trim(); const vertical = aVertical.value; const why = aWhy.value.trim();
+  if(!name || !email || !branch || !roll || !vertical){ applyMsg.textContent = 'Please fill in all fields.'; applyMsg.className = 'form-msg err'; return; }
+  submitApplyBtn.disabled = true; applyMsg.textContent = 'Submitting…'; applyMsg.className = 'form-msg';
+  try{ await addDoc(applicationsRef, { name, email, branch, roll, vertical, why, createdAt: serverTimestamp() }); applyMsg.textContent = 'Application received!'; applyMsg.className = 'form-msg ok'; setTimeout(() => { applyModalBackdrop.classList.remove('show'); submitApplyBtn.disabled = false; }, 1100); }
+  catch(err){ applyMsg.textContent = 'Submission error.'; applyMsg.className = 'form-msg err'; submitApplyBtn.disabled = false; }
 });
-
-document.getElementById('cancelApply').addEventListener('click', closeApplyModal);
-applyModalBackdrop.addEventListener('click', (e) => { if(e.target === applyModalBackdrop) closeApplyModal(); });
-
-const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-submitApplyBtn.addEventListener('click', async () => {
-  const name = aName.value.trim();
-  const email = aEmail.value.trim();
-  const branch = aBranch.value.trim();
-  const roll = aRoll.value.trim();
-  const vertical = aVertical.value;
-  const why = aWhy.value.trim();
-
-  if(!name || !email || !branch || !roll || !vertical){
-    applyMsg.textContent = 'Please fill in name, email, branch, roll number, and a vertical.';
-    applyMsg.className = 'form-msg err';
-    return;
-  }
-  if(!emailPattern.test(email)){
-    applyMsg.textContent = 'That email address doesn\'t look right.';
-    applyMsg.className = 'form-msg err';
-    return;
-  }
-
-  submitApplyBtn.disabled = true;
-  applyMsg.textContent = 'Submitting…';
-  applyMsg.className = 'form-msg';
-
-  try{
-    await addDoc(applicationsRef, {
-      name, email, branch, roll, vertical, why,
-      createdAt: serverTimestamp()
-    });
-    applyMsg.textContent = 'Application received — we\'ll be in touch!';
-    applyMsg.className = 'form-msg ok';
-    setTimeout(() => {
-      closeApplyModal();
-      applyMsg.textContent = '';
-    }, 1100);
-  }catch(err){
-    console.error(err);
-    applyMsg.textContent = `Something went wrong submitting (${err.code || err.message}) — please try again.`;
-    applyMsg.className = 'form-msg err';
-    const modalEl = applyModalBackdrop.querySelector('.modal');
-    modalEl.classList.remove('shake');
-    void modalEl.offsetWidth;
-    modalEl.classList.add('shake');
-  }finally{
-    submitApplyBtn.disabled = false;
-  }
-});
-aWhy.addEventListener('keydown', (e) => { if(e.key === 'Enter' && e.ctrlKey) submitApplyBtn.click(); });

@@ -5,73 +5,118 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Applications — IIPE Racing</title>
 <meta name="robots" content="noindex, nofollow">
-<meta name="theme-color" content="#0A0E16">
+<meta name="theme-color" content="#050505">
 <link rel="icon" href="assets/favicon.ico" sizes="any">
-<link rel="icon" type="image/png" sizes="256x256" href="assets/favicon-256.png">
-<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+
+<!-- Premium Typography -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<!-- Lucide Icons -->
+<script src="https://unpkg.com/lucide@latest"></script>
+
+<link rel="stylesheet" href="style.css?v=5">
 </head>
 <body>
 
-<div class="aurora" aria-hidden="true"><span></span><span></span><span></span></div>
-<div class="grain" aria-hidden="true"></div>
-<div class="scroll-progress"></div>
+<!-- Custom Cursor (Desktop Only) -->
+<div class="cursor-dot"></div>
+<div class="cursor-outline"></div>
 
-<header>
-  <div class="nav">
-    <a href="index.html" class="brand"><span class="brand-logo-wrap"><img class="brand-logo" src="assets/logo.png" alt="IIPE Racing"></span> RACING</a>
-    <span class="admin-page-label">Applications</span>
+<!-- Premium Textures & Ambient Glows -->
+<div class="noise-overlay"></div>
+<div class="ambient-glow glow-1"></div>
+<div class="ambient-glow glow-2"></div>
+
+<!-- Scroll Progress -->
+<div class="scroll-progress" id="scrollProgress"></div>
+
+<!-- Floating Navbar -->
+<header class="navbar">
+  <div class="nav-container">
+    <a href="index.html" class="brand magnetic-el">
+      <img src="assets/logo.png" alt="IIPE Racing" class="brand-logo-ball">
+      <span class="brand-text">IIPE RACING</span>
+    </a>
+    <span class="eyebrow" style="margin-bottom:0; font-size:12px;">Applications Portal</span>
   </div>
 </header>
 
-<main class="admin-wrap">
+<main class="wrap" style="padding-top: 140px; min-height: 80vh;">
 
   <!-- SIGN-IN GATE -->
-  <section id="gate" class="admin-gate">
-    <div class="admin-gate-card" id="gateCard">
-      <h1>Team Sign In</h1>
-      <p class="lede" style="margin-bottom:20px; font-size:14px;">Applications are only visible to signed-in team accounts — same login as the blog and roster.</p>
-      <div class="field"><label for="gEmail">Team email</label><input type="email" id="gEmail" placeholder="you@iiperacing.example" autocomplete="username"></div>
-      <div class="field"><label for="gPass">Password</label><input type="password" id="gPass" placeholder="Password" autocomplete="current-password"></div>
+  <section id="gate" style="display:flex; justify-content:center; align-items:center;">
+    <div class="modal" style="position:relative; transform:none; box-shadow:none;">
+      <h3 class="modal-title">Team Sign In</h3>
+      <p class="modal-switch" style="margin-top:-16px; margin-bottom:24px;">Applications are only visible to signed-in team accounts.</p>
+      
+      <div class="field"><label>Team email</label><input type="email" id="gEmail" placeholder="you@iiperacing.example"></div>
+      <div class="field"><label>Password</label><input type="password" id="gPass"></div>
       <div class="form-msg err" id="gateMsg"></div>
-      <button class="btn-primary" id="gateSignIn" style="width:100%; margin-top:6px;">Sign In</button>
+      
+      <button class="btn-primary w-full magnetic-el" id="gateSignIn" style="margin-top:8px;">Sign In</button>
     </div>
   </section>
 
   <!-- DASHBOARD -->
   <section id="dashboard" style="display:none;">
-    <div class="admin-header reveal in">
+    <div class="section-header flex-between">
       <div>
         <div class="eyebrow">Recruitment</div>
-        <h1 class="section-title" style="margin-bottom:0;">Applications</h1>
+        <h2>Applications</h2>
       </div>
       <span class="auth-status" id="adminAuthStatus"></span>
     </div>
 
-    <div class="admin-toolbar">
-      <input type="text" id="searchInput" placeholder="Search name or email…">
-      <select id="filterVertical">
-        <option value="">All verticals</option>
-        <option value="Chassis & Body">Chassis & Body</option>
-        <option value="Powertrain">Powertrain</option>
-        <option value="Suspension & Steering">Suspension & Steering</option>
-        <option value="Electronics & Data">Electronics & Data</option>
-        <option value="Manufacturing">Manufacturing</option>
-        <option value="Business & Ops">Business & Ops</option>
-        <option value="Not sure yet">Not sure yet</option>
-      </select>
-      <span class="admin-count" id="appCount"></span>
+    <!-- Filter Toolbar -->
+    <div style="display: flex; gap: 16px; flex-wrap: wrap; align-items: center; margin-bottom: 32px;">
+      <div class="field" style="margin:0; flex:1; min-width:240px;">
+        <input type="text" id="searchInput" placeholder="Search name or email…">
+      </div>
+      <div class="field" style="margin:0;">
+        <select id="filterVertical" class="magnetic-el">
+          <option value="">All verticals</option>
+          <option value="Chassis & Body">Chassis & Body</option>
+          <option value="Powertrain">Powertrain</option>
+          <option value="Suspension & Steering">Suspension & Steering</option>
+          <option value="Electronics & Data">Electronics & Data</option>
+          <option value="Manufacturing">Manufacturing</option>
+          <option value="Business & Ops">Business & Ops</option>
+          <option value="Not sure yet">Not sure yet</option>
+        </select>
+      </div>
+      <span style="font-family: var(--font-mono); font-size:12px; color:var(--text-secondary); margin-left:auto;" id="appCount"></span>
     </div>
 
-    <div class="admin-list" id="appList">
-      <div class="empty-state"><span class="loader-dots"><span></span><span></span><span></span></span>Loading applications…</div>
+    <!-- Application List Output -->
+    <div style="display:flex; flex-direction:column; gap:16px;" id="appList">
+      <div class="empty-state"><i data-lucide="loader-2" class="spin"></i> Loading applications...</div>
     </div>
   </section>
 
 </main>
 
+<script>
+  lucide.createIcons();
+
+  if (window.matchMedia("(pointer: fine)").matches) {
+    const cursorDot = document.querySelector('.cursor-dot');
+    const cursorOutline = document.querySelector('.cursor-outline');
+    
+    document.addEventListener('mousemove', e => {
+      cursorDot.style.left = e.clientX + 'px';
+      cursorDot.style.top = e.clientY + 'px';
+      cursorOutline.style.left = e.clientX + 'px';
+      cursorOutline.style.top = e.clientY + 'px';
+    });
+
+    document.querySelectorAll('a, button, select, input, .magnetic-el').forEach(el => {
+      el.addEventListener('mouseenter', () => cursorOutline.classList.add('hover'));
+      el.addEventListener('mouseleave', () => cursorOutline.classList.remove('hover'));
+    });
+  }
+</script>
 <script type="module" src="admin.js"></script>
 </body>
 </html>
