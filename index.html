@@ -84,6 +84,7 @@
       <a class="nav-link-btn magnetic-el" id="navGalleryBtn" style="cursor:pointer;">Gallery</a>
       <a href="#join" class="magnetic-el">Join Us</a>
       <a href="#blog" class="magnetic-el">Blog</a>
+      <a class="nav-link-btn magnetic-el" id="navContactBtn" style="cursor:pointer;">Contact</a>
     </nav>
     <div class="nav-right" style="position:relative;">
       <button class="nav-icon-btn magnetic-el" id="notifBtn" style="color:var(--text-secondary); display:none; position:relative;" title="Notifications">
@@ -265,7 +266,7 @@
       <a class="magnetic-el" id="footerGalleryBtn" style="cursor:pointer;">Gallery</a>
       <a href="#join" class="magnetic-el">Join Us</a>
       <a href="#blog" class="magnetic-el">Blog</a>
-      <a href="mailto:team@iiperacing.example" class="magnetic-el">Contact</a>
+      <a class="magnetic-el" id="footerContactBtn" style="cursor:pointer;">Contact</a>
     </div>
   </div>
   <div class="wrap"><p class="fine">Zero to grid. See you at Supra 2027.</p></div>
@@ -537,6 +538,28 @@
       <div class="modal-actions">
         <button class="btn-cancel magnetic-el" id="cancelAddMedia">Cancel</button>
         <button class="btn-primary magnetic-el" id="saveAddMedia">Upload & Add</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Contact Modal -->
+<div class="modal-backdrop" id="contactModalBackdrop">
+  <div class="modal" style="position: relative; overflow: hidden; min-height: 300px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;">
+    <!-- Transparent Racing Car Background -->
+    <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: url('assets/hero/wallhaven-kwqym1_3840x2160.jpg') center/cover no-repeat; opacity: 0.15; z-index: 0; pointer-events: none;"></div>
+    
+    <button class="close-modal-btn" id="closeContactModalBtn" style="z-index: 2;">&times;</button>
+    
+    <div style="position: relative; z-index: 1;">
+      <h2 style="margin-bottom: 24px;">Get In Touch</h2>
+      <div style="display: flex; flex-direction: column; gap: 16px; font-size: 18px;">
+        <a href="mailto:formulastudent@iipe.ac.in" class="magnetic-el" style="color: var(--text-primary); display: inline-flex; align-items: center; justify-content: center; gap: 8px;">
+          <i data-lucide="mail"></i> formulastudent@iipe.ac.in
+        </a>
+        <a href="https://www.instagram.com/iiperacing/" target="_blank" rel="noopener noreferrer" class="magnetic-el" style="color: var(--text-primary); display: inline-flex; align-items: center; justify-content: center; gap: 8px;">
+          <i data-lucide="instagram"></i> @iiperacing
+        </a>
       </div>
     </div>
   </div>

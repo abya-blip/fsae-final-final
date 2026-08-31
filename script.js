@@ -1052,3 +1052,26 @@ if (window.location.hash === '#gallery') {
 }
 
 renderGalleryGrid();
+
+// ============================================================
+// CONTACT MODAL
+// ============================================================
+const contactModalBackdrop = document.getElementById('contactModalBackdrop');
+const navContactBtn = document.getElementById('navContactBtn');
+const footerContactBtn = document.getElementById('footerContactBtn');
+const closeContactModalBtn = document.getElementById('closeContactModalBtn');
+
+function openContactModal() {
+  if (contactModalBackdrop) contactModalBackdrop.classList.add('show');
+}
+function closeContactModal() {
+  if (contactModalBackdrop) contactModalBackdrop.classList.remove('show');
+}
+
+navContactBtn?.addEventListener('click', openContactModal);
+footerContactBtn?.addEventListener('click', openContactModal);
+closeContactModalBtn?.addEventListener('click', closeContactModal);
+
+contactModalBackdrop?.addEventListener('click', (e) => {
+  if (e.target === contactModalBackdrop) closeContactModal();
+});
