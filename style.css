@@ -106,12 +106,26 @@ button { background: none; border: none; cursor: pointer; font-family: inherit; 
   transition: opacity 0.8s ease, visibility 0.8s ease;
 }
 .preloader.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+.preloader-content {
+  display: flex; flex-direction: column; align-items: center; gap: 24px;
+}
 .car-outline { width: 340px; height: auto; max-width: 90%; }
-.draw-line { stroke-dasharray: 2000; stroke-dashoffset: 2000; animation: drawCar 2s ease-in-out forwards; }
-.draw-line.track-line { animation: drawCarFast 1.5s ease-out forwards; }
+.draw-line { stroke-dasharray: 2000; stroke-dashoffset: 2000; animation: drawCar 1.6s ease-in-out forwards; }
+.draw-line.track-line { animation: drawCarFast 1.2s ease-out forwards; }
+
+.preloader-credit {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  opacity: 0;
+  animation: fadeInCredit 0.8s ease forwards 0.8s;
+}
 
 @keyframes drawCar { to { stroke-dashoffset: 0; } }
 @keyframes drawCarFast { to { stroke-dashoffset: 0; } }
+@keyframes fadeInCredit { to { opacity: 1; } }
 
 
 .spin { animation: spin 1s linear infinite; }
