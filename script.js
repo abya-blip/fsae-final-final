@@ -478,6 +478,8 @@ onAuthStateChanged(auth, (user) => {
       document.getElementById('signOutBtn')?.addEventListener('click', () => signOut(auth));
     }
     if(notifBtn) notifBtn.style.display = 'inline-flex';
+    const navSignInBtn = document.getElementById('navSignInBtn');
+    if(navSignInBtn) navSignInBtn.style.display = 'none';
 
     // Fetch team profile to get varying permissions
     onSnapshot(query(teamRef, where("authEmail", "==", user.email)), (snap) => {
@@ -527,6 +529,8 @@ onAuthStateChanged(auth, (user) => {
   }else{ 
     if(authStatus) authStatus.innerHTML = ''; 
     if(notifBtn) notifBtn.style.display = 'none';
+    const navSignInBtn = document.getElementById('navSignInBtn');
+    if(navSignInBtn) navSignInBtn.style.display = 'inline-flex';
     currentUserTeamProfile = null;
   }
 });
@@ -605,6 +609,7 @@ document.getElementById('newPostBtn')?.addEventListener('click', () => openTeamO
 document.getElementById('addTeamBtn')?.addEventListener('click', () => openTeamOrPostModal('team'));
 document.getElementById('newAnnouncementBtn')?.addEventListener('click', () => openTeamOrPostModal('announcement'));
 document.getElementById('updateRoadmapBtn')?.addEventListener('click', () => openTeamOrPostModal('roadmap'));
+document.getElementById('navSignInBtn')?.addEventListener('click', () => openTeamOrPostModal('signin'));
 
 document.querySelectorAll('.close-modal-btn, .btn-cancel, #cancelSignIn, #cancelEditTeam').forEach(btn => {
   btn.addEventListener('click', () => { modalBackdrop.classList.remove('show'); applyModalBackdrop.classList.remove('show'); });
@@ -612,7 +617,14 @@ document.querySelectorAll('.close-modal-btn, .btn-cancel, #cancelSignIn, #cancel
 
 document.getElementById('doSignIn').addEventListener('click', async () => {
   const msg = document.getElementById('signInMsg');
-  try { await signInWithEmailAndPassword(auth, document.getElementById('emailInput').value, document.getElementById('passInput').value); showAuthedStep(); } 
+  try { 
+    await signInWithEmailAndPassword(auth, document.getElementById('emailInput').value, document.getElementById('passInput').value); 
+    if (targetAction === 'signin') {
+      modalBackdrop.classList.remove('show');
+    } else {
+      showAuthedStep(); 
+    }
+  } 
   catch (err) { msg.textContent = "Sign-in failed — check credentials."; }
 });
 

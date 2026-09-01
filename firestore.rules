@@ -2,58 +2,69 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
     // Team members & engineer profiles
-    // Anyone can view the roster; authenticated team members can add, edit tags/roles, and delete.
     match /team/{memberId} {
       allow read: if true;
-      allow create, update, delete: if request.auth != null;
+      allow create: if isAuthenticated() && request.resource.data.addedByUid == request.auth.uid;
+      allow update, delete: if isAuthenticated();
     }
 
     // Recruitment Applications
     // Anyone can apply (submit); only authenticated team members can view or manage submissions.
     match /applications/{applicationId} {
-      allow create: if true;
-      allow read, update, delete: if request.auth != null;
+      allow create: if true 
+        // Validate required fields exist and type/length to prevent spam
+        && request.resource.data.keys().hasAll(['name', 'email', 'branch', 'roll', 'vertical', 'why', 'createdAt'])
+        && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() < 100
+        && request.resource.data.email is string && request.resource.data.email.size() > 0 && request.resource.data.email.size() < 100
+        && request.resource.data.why is string && request.resource.data.why.size() <= 3000;
+      allow read, update, delete: if isAuthenticated();
     }
 
     // Blog / Build Log Posts
-    // Anyone can read blog posts; authenticated team members can create, edit, or delete.
     match /posts/{postId} {
       allow read: if true;
-      allow create, update, delete: if request.auth != null;
+      allow create: if isAuthenticated() && request.resource.data.authorUid == request.auth.uid;
+      allow update, delete: if isAuthenticated();
     }
 
     // Team Announcements
-    // Anyone can view announcements; authenticated team members can publish or remove.
     match /announcements/{announcementId} {
       allow read: if true;
-      allow create, update, delete: if request.auth != null;
+      allow create: if isAuthenticated() && request.resource.data.authorUid == request.auth.uid;
+      allow update, delete: if isAuthenticated();
     }
 
     // Roadmap Status Progress
-    // Anyone can read progress; authenticated team members can update milestone stages.
     match /roadmap/{docId} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isAuthenticated();
     }
 
     // Engineer Technical Logs (Profile Portfolio)
-    // Anyone can view logs; authenticated team members can publish or manage logs.
     match /engineer_logs/{logId} {
       allow read: if true;
-      allow create, update, delete: if request.auth != null;
+      allow create: if isAuthenticated() && request.resource.data.authorUid == request.auth.uid;
+      allow update, delete: if isAuthenticated();
     }
 
     // Media & Workshop Gallery
     match /gallery/{mediaId} {
       allow read: if true;
-      allow create, update, delete: if request.auth != null;
+      allow create: if isAuthenticated() && request.resource.data.authorUid == request.auth.uid;
+      allow update, delete: if isAuthenticated();
     }
 
     // In-App Notifications
     match /notifications/{notifId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
+      allow read: if isAuthenticated();
+      // Notifications are managed server-side (if at all); clients only track read status locally in localStorage
+      allow write: if false; 
     }
   }
 }
