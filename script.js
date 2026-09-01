@@ -508,9 +508,9 @@ onAuthStateChanged(auth, (user) => {
     }
     if(notifBtn) notifBtn.style.display = 'inline-flex';
     const navSignInBtn = document.getElementById('navSignInBtn');
-    if(navSignInBtn) navSignInBtn.style.display = 'none';
+    if(navSignInBtn) navSignInBtn.classList.add('d-none');
     const navMobileSignInBtn = document.getElementById('navMobileSignInBtn');
-    if(navMobileSignInBtn) navMobileSignInBtn.style.display = 'none';
+    if(navMobileSignInBtn) navMobileSignInBtn.classList.add('d-none');
 
     // Fetch team profile to get varying permissions
     onSnapshot(query(teamRef, where("authEmail", "==", user.email)), (snap) => {
@@ -561,9 +561,9 @@ onAuthStateChanged(auth, (user) => {
     if(authStatus) authStatus.innerHTML = ''; 
     if(notifBtn) notifBtn.style.display = 'none';
     const navSignInBtn = document.getElementById('navSignInBtn');
-    if(navSignInBtn) navSignInBtn.style.display = 'inline-flex';
+    if(navSignInBtn) navSignInBtn.classList.remove('d-none');
     const navMobileSignInBtn = document.getElementById('navMobileSignInBtn');
-    if(navMobileSignInBtn) navMobileSignInBtn.style.display = 'block';
+    if(navMobileSignInBtn) navMobileSignInBtn.classList.remove('d-none');
     currentUserTeamProfile = null;
   }
 });

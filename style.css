@@ -142,7 +142,7 @@ h1, h2, h3, h4 { font-weight: 700; line-height: 1.2; letter-spacing: -0.02em; }
   background: var(--text-primary); color: var(--bg-base);
   padding: 16px 32px; border-radius: var(--radius-pill);
   font-weight: 600; font-size: 15px; display: inline-flex; align-items: center; justify-content: center; gap: 10px;
-  transition: transform 0.2s, background 0.2s, box-shadow 0.2s;
+  transition: transform 0.2s, background 0.2s, box-shadow 0.2s; white-space: nowrap;
 }
 .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(255,255,255,0.15); }
 
@@ -150,7 +150,7 @@ h1, h2, h3, h4 { font-weight: 700; line-height: 1.2; letter-spacing: -0.02em; }
   background: var(--bg-surface); color: var(--text-primary);
   border: 1px solid var(--border-subtle); padding: 16px 32px;
   border-radius: var(--radius-pill); font-weight: 600; font-size: 15px;
-  display: inline-flex; align-items: center; justify-content: center; gap: 10px; transition: all 0.2s;
+  display: inline-flex; align-items: center; justify-content: center; gap: 10px; transition: all 0.2s; white-space: nowrap;
 }
 .btn-secondary:hover { background: var(--bg-elevated); border-color: var(--border-focus); transform: translateY(-2px); }
 
@@ -158,11 +158,12 @@ h1, h2, h3, h4 { font-weight: 700; line-height: 1.2; letter-spacing: -0.02em; }
   background: transparent; color: var(--text-primary);
   border: 1px solid var(--border-subtle); padding: 16px 32px;
   border-radius: var(--radius-pill); font-weight: 600; font-size: 15px;
-  display: inline-flex; align-items: center; justify-content: center; gap: 10px; transition: all 0.2s;
+  display: inline-flex; align-items: center; justify-content: center; gap: 10px; transition: all 0.2s; white-space: nowrap;
 }
 .btn-cancel:hover { background: var(--bg-elevated); border-color: var(--border-focus); transform: translateY(-2px); }
 
 .btn-small { padding: 12px 24px; font-size: 14px; }
+.mobile-only { display: none !important; }
 
 /* --- CUSTOM SCROLLBAR --- */
 ::-webkit-scrollbar { width: 8px; }
@@ -907,8 +908,9 @@ h1, h2, h3, h4 { font-weight: 700; line-height: 1.2; letter-spacing: -0.02em; }
     box-shadow: var(--shadow-lg); z-index: 1000;
   }
   .nav-links.open { display: flex; }
-  .btn-nav { display: none; }
+  .btn-nav { display: none !important; }
   .menu-btn { display: block; }
+  .mobile-only { display: block !important; }
   
   /* Stops 3D car from trapping scrolling on mobile devices */
   .spline-container iframe { pointer-events: none; }
@@ -936,4 +938,5 @@ h1, h2, h3, h4 { font-weight: 700; line-height: 1.2; letter-spacing: -0.02em; }
   .modal-actions { flex-direction: column; }
   .modal-actions button { width: 100%; }
 }@ v i e w - t r a n s i t i o n   {   n a v i g a t i o n :   a u t o ;   }  
+ . d - n o n e   {   d i s p l a y :   n o n e   ! i m p o r t a n t ;   }  
  
