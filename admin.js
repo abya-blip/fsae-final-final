@@ -9,7 +9,7 @@ import {
   signInWithEmailAndPassword, onAuthStateChanged, signOut
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 import {
-  collection, query, orderBy, onSnapshot
+  collection, query, orderBy, onSnapshot, where, doc, getDoc, setDoc
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 import { animate, scroll } from "https://cdn.jsdelivr.net/npm/motion@13.1.1/+esm";
 
@@ -126,17 +126,48 @@ searchInput.addEventListener('input', renderApplications);
 filterVertical.addEventListener('change', renderApplications);
 
 // ---------- sign-in gate ----------
-onAuthStateChanged(auth, (user) => {
+let isRecruitmentOpen = true;
+
+onAuthStateChanged(auth, async (user) => {
   if(user){
     gate.style.display = 'none';
     dashboard.style.display = 'block';
     adminAuthStatus.innerHTML = `<span class="live-dot"></span>Signed in as ${escapeHtml(user.email)} · <button id="adminSignOut">Sign out</button>`;
     document.getElementById('adminSignOut').addEventListener('click', () => signOut(auth));
     subscribeToApplications();
+
+    // Check founder status
+    const teamRef = collection(db, "team");
+    onSnapshot(query(teamRef, where("authEmail", "==", user.email)), (snap) => {
+      if (!snap.empty) {
+        const teamData = snap.docs[0].data();
+        const isFounder = teamData.isFounder === true || (teamData.role && teamData.role.toLowerCase().includes('founder'));
+        if (isFounder) {
+          document.getElementById('founderControls').style.display = 'block';
+          
+          // Listen to recruitment setting
+          const recruitmentDoc = doc(db, 'settings', 'recruitment');
+          onSnapshot(recruitmentDoc, (docSnap) => {
+            if(docSnap.exists()){
+              isRecruitmentOpen = docSnap.data().isOpen;
+            } else {
+              isRecruitmentOpen = true; // default
+            }
+            const btn = document.getElementById('toggleRecruitmentBtn');
+            if(btn){
+              btn.textContent = isRecruitmentOpen ? 'Close Applications' : 'Open Applications';
+              btn.className = isRecruitmentOpen ? 'btn-secondary btn-small magnetic-el' : 'btn-primary btn-small magnetic-el';
+            }
+          });
+        }
+      }
+    });
+
   }else{
     dashboard.style.display = 'none';
     gate.style.display = 'flex';
     stopApplications();
+    document.getElementById('founderControls').style.display = 'none';
     gEmail.value = '';
     gPass.value = '';
     gateMsg.textContent = '';
@@ -170,3 +201,12 @@ gateSignInBtn.addEventListener('click', async () => {
   }
 });
 gPass.addEventListener('keydown', (e) => { if(e.key === 'Enter') gateSignInBtn.click(); });
+
+document.getElementById('toggleRecruitmentBtn')?.addEventListener('click', async () => {
+  try {
+    await setDoc(doc(db, 'settings', 'recruitment'), { isOpen: !isRecruitmentOpen }, { merge: true });
+  } catch(err) {
+    console.error('Error toggling recruitment:', err);
+    alert('Failed to toggle recruitment state.');
+  }
+});

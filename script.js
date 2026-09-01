@@ -425,6 +425,35 @@ onSnapshot(query(teamRef, orderBy('createdAt', 'asc')), (snapshot) => {
   renderTeamGrid();
 });
 
+// --- FIREBASE: RECRUITMENT STATUS ---
+let isRecruitmentOpen = true;
+onSnapshot(doc(db, 'settings', 'recruitment'), (docSnap) => {
+  isRecruitmentOpen = docSnap.exists() ? docSnap.data().isOpen : true;
+  
+  const applyNowBtn = document.getElementById('applyNowBtn');
+  const heroJoinBtn = document.getElementById('heroJoinBtn');
+  const navJoinBtn = document.getElementById('navJoinBtn');
+  const joinTags = document.querySelectorAll('.join-tag');
+  const joinApplies = document.querySelectorAll('.join-apply');
+  const eyebrow = document.querySelector('#join .eyebrow');
+
+  if (isRecruitmentOpen) {
+    if(applyNowBtn) { applyNowBtn.style.display = 'inline-flex'; applyNowBtn.textContent = 'Apply Now'; }
+    if(heroJoinBtn) { heroJoinBtn.style.display = 'inline-flex'; heroJoinBtn.textContent = 'Join The Founding Team'; }
+    if(navJoinBtn) { navJoinBtn.style.display = 'inline-flex'; }
+    if(eyebrow) { eyebrow.textContent = 'Recruitment is open'; }
+    joinTags.forEach(tag => { tag.textContent = 'Recruiting'; tag.style.background = 'rgba(230,57,70,0.1)'; tag.style.color = 'var(--accent)'; });
+    joinApplies.forEach(btn => { btn.style.display = 'inline-block'; });
+  } else {
+    if(applyNowBtn) { applyNowBtn.style.display = 'none'; }
+    if(heroJoinBtn) { heroJoinBtn.textContent = 'Applications Closed'; heroJoinBtn.style.pointerEvents = 'none'; heroJoinBtn.style.opacity = '0.5'; }
+    if(navJoinBtn) { navJoinBtn.style.display = 'none'; }
+    if(eyebrow) { eyebrow.textContent = 'Recruitment is currently closed'; }
+    joinTags.forEach(tag => { tag.textContent = 'Closed'; tag.style.background = 'rgba(255,255,255,0.05)'; tag.style.color = 'var(--text-secondary)'; });
+    joinApplies.forEach(btn => { btn.style.display = 'none'; });
+  }
+});
+
 // --- FIREBASE: ANNOUNCEMENTS ---
 const announceList = document.getElementById('announceList');
 const navAnnounceAlert = document.getElementById('navAnnounceAlert');
@@ -480,6 +509,8 @@ onAuthStateChanged(auth, (user) => {
     if(notifBtn) notifBtn.style.display = 'inline-flex';
     const navSignInBtn = document.getElementById('navSignInBtn');
     if(navSignInBtn) navSignInBtn.style.display = 'none';
+    const navMobileSignInBtn = document.getElementById('navMobileSignInBtn');
+    if(navMobileSignInBtn) navMobileSignInBtn.style.display = 'none';
 
     // Fetch team profile to get varying permissions
     onSnapshot(query(teamRef, where("authEmail", "==", user.email)), (snap) => {
@@ -531,6 +562,8 @@ onAuthStateChanged(auth, (user) => {
     if(notifBtn) notifBtn.style.display = 'none';
     const navSignInBtn = document.getElementById('navSignInBtn');
     if(navSignInBtn) navSignInBtn.style.display = 'inline-flex';
+    const navMobileSignInBtn = document.getElementById('navMobileSignInBtn');
+    if(navMobileSignInBtn) navMobileSignInBtn.style.display = 'block';
     currentUserTeamProfile = null;
   }
 });
@@ -610,6 +643,7 @@ document.getElementById('addTeamBtn')?.addEventListener('click', () => openTeamO
 document.getElementById('newAnnouncementBtn')?.addEventListener('click', () => openTeamOrPostModal('announcement'));
 document.getElementById('updateRoadmapBtn')?.addEventListener('click', () => openTeamOrPostModal('roadmap'));
 document.getElementById('navSignInBtn')?.addEventListener('click', () => openTeamOrPostModal('signin'));
+document.getElementById('navMobileSignInBtn')?.addEventListener('click', () => openTeamOrPostModal('signin'));
 
 document.querySelectorAll('.close-modal-btn, .btn-cancel, #cancelSignIn, #cancelEditTeam').forEach(btn => {
   btn.addEventListener('click', () => { modalBackdrop.classList.remove('show'); applyModalBackdrop.classList.remove('show'); });
@@ -777,8 +811,13 @@ function openApplyModal(prefillVertical){ if(aName) aName.value = ''; if(aEmail)
 document.querySelectorAll('.join-apply').forEach(btn => { btn.addEventListener('click', () => openApplyModal(btn.dataset.vertical)); });
 
 submitApplyBtn?.addEventListener('click', async () => {
+  if(!isRecruitmentOpen) {
+    applyMsg.textContent = 'Applications are currently closed.';
+    applyMsg.className = 'form-msg err';
+    return;
+  }
   const name = aName.value.trim(); const email = aEmail.value.trim(); const branch = aBranch.value.trim(); const roll = aRoll.value.trim(); const vertical = aVertical.value; const why = aWhy.value.trim();
-  if(!name || !email || !branch || !roll || !vertical){ applyMsg.textContent = 'Please fill in all fields.'; applyMsg.className = 'form-msg err'; return; }
+  if(!name || !email || !branch || !roll || !vertical){ applyMsg.textContent = 'Please fill out all required fields.'; applyMsg.className = 'form-msg err'; return; }
   submitApplyBtn.disabled = true; applyMsg.textContent = 'Submitting…'; applyMsg.className = 'form-msg';
   try{ await addDoc(applicationsRef, { name, email, branch, roll, vertical, why, createdAt: serverTimestamp() }); applyMsg.textContent = 'Application received!'; applyMsg.className = 'form-msg ok'; setTimeout(() => { applyModalBackdrop.classList.remove('show'); submitApplyBtn.disabled = false; }, 1100); }
   catch(err){ applyMsg.textContent = 'Submission error.'; applyMsg.className = 'form-msg err'; submitApplyBtn.disabled = false; }
