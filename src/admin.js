@@ -4,13 +4,13 @@
 // "applications" collection to signed-in users, so this page's gate is
 // backed by real security, not just a UI check.
 // ============================================================
-import { auth, db } from "./firebase-init.js";
+import { auth, db } from "../firebase-init.js";
 import {
   signInWithEmailAndPassword, onAuthStateChanged, signOut
-} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+} from "firebase/auth";
 import {
   collection, query, orderBy, onSnapshot, where, doc, getDoc, setDoc
-} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+} from "firebase/firestore";
 import { animate, scroll } from "https://cdn.jsdelivr.net/npm/motion@13.1.1/+esm";
 
 const applicationsRef = collection(db, "applications");
@@ -61,6 +61,24 @@ function escapeHtml(str){
   const div = document.createElement('div');
   div.textContent = str || '';
   return div.innerHTML;
+}
+
+function setBtnLoading(btn, isLoading) {
+  if (!btn) return;
+  if (isLoading) {
+    btn.dataset.originalHtml = btn.innerHTML;
+    btn.dataset.originalWidth = btn.style.width || '';
+    btn.style.width = btn.offsetWidth + 'px';
+    btn.innerHTML = '<i data-lucide="loader-2" class="spin"></i>';
+    if(window.lucide) window.lucide.createIcons({ root: btn });
+    btn.disabled = true;
+    btn.style.opacity = '0.7';
+  } else {
+    btn.innerHTML = btn.dataset.originalHtml || btn.innerHTML;
+    btn.style.width = btn.dataset.originalWidth;
+    btn.disabled = false;
+    btn.style.opacity = '1';
+  }
 }
 
 function renderApplications(){
@@ -175,17 +193,16 @@ onAuthStateChanged(auth, async (user) => {
   }
 });
 
-gateSignInBtn.addEventListener('click', async () => {
+gateSignInBtn.addEventListener('click', async (e) => {
+  const btn = e.currentTarget;
   const email = gEmail.value.trim();
-  const pass = gPass.value;
-  if(!email || !pass){
-    gateMsg.textContent = 'Enter both email and password.';
-    gateMsg.className = 'form-msg err';
-    return;
-  }
-  gateSignInBtn.disabled = true;
-  gateMsg.textContent = 'Signing in…';
+  const pass = gPass.value.trim();
+  if(!email || !pass){ gateMsg.textContent = 'Please fill both fields.'; gateMsg.className = 'form-msg err'; return; }
+  
+  gateMsg.textContent = 'Signing in...';
   gateMsg.className = 'form-msg';
+  setBtnLoading(btn, true);
+
   try{
     await signInWithEmailAndPassword(auth, email, pass);
     gateCard.classList.add('success-flash');
@@ -197,7 +214,7 @@ gateSignInBtn.addEventListener('click', async () => {
     void gateCard.offsetWidth;
     gateCard.classList.add('shake');
   }finally{
-    gateSignInBtn.disabled = false;
+    setBtnLoading(btn, false);
   }
 });
 gPass.addEventListener('keydown', (e) => { if(e.key === 'Enter') gateSignInBtn.click(); });

@@ -93,7 +93,8 @@ body {
 
 a { color: inherit; text-decoration: none; transition: color 0.2s; }
 button { background: none; border: none; cursor: pointer; font-family: inherit; }
-.wrap { max-width: 1200px; margin: 0 auto; padding: 0 5%; }
+.wrap { padding: 40px 5%; margin: 0 auto; max-width: 1400px; }
+section { position: relative; content-visibility: auto; contain-intrinsic-size: 800px; }
 .section-padding { padding: 120px 0; }
 .text-center { text-align: center; }
 .flex-between { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; flex-wrap: wrap; }
@@ -130,6 +131,32 @@ button { background: none; border: none; cursor: pointer; font-family: inherit; 
 
 .spin { animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* --- SKELETON LOADERS --- */
+@keyframes skeleton-pulse {
+  0% { background-color: rgba(255,255,255,0.05); }
+  50% { background-color: rgba(255,255,255,0.1); }
+  100% { background-color: rgba(255,255,255,0.05); }
+}
+.skeleton {
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+  pointer-events: none;
+}
+.skeleton-text {
+  background-color: rgba(255,255,255,0.05);
+  border-radius: var(--radius-sm);
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+.skeleton-img {
+  width: 100%;
+  height: 100%;
+  min-height: 200px;
+  background-color: rgba(255,255,255,0.05);
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+.team-card.skeleton .skeleton-img {
+  width: 120px; height: 120px; border-radius: 50%; margin: 0 auto;
+}
 
 /* --- TYPOGRAPHY & BUTTONS --- */
 h1, h2, h3, h4 { font-weight: 700; line-height: 1.2; letter-spacing: -0.02em; }
@@ -942,6 +969,10 @@ h1, h2, h3, h4 { font-weight: 700; line-height: 1.2; letter-spacing: -0.02em; }
   .modal { padding: 24px 20px; border-radius: var(--radius-md); }
   .modal-actions { flex-direction: column; }
   .modal-actions button { width: 100%; }
-}@ v i e w - t r a n s i t i o n   {   n a v i g a t i o n :   a u t o ;   }  
- . d - n o n e   {   d i s p l a y :   n o n e   ! i m p o r t a n t ;   }  
- 
+}
+
+@view-transition {
+  navigation: auto;
+}
+
+.d-none { display: none !important; }

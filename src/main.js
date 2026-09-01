@@ -1,6 +1,6 @@
-import { auth, db } from "./firebase-init.js";
-import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-import { collection, addDoc, doc, setDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+import { auth, db } from "../firebase-init.js";
+import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from "firebase/auth";
+import { collection, addDoc, doc, setDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, where, serverTimestamp } from "firebase/firestore";
 
 const postsRef = collection(db, "posts");
 const applicationsRef = collection(db, "applications");
@@ -133,6 +133,24 @@ document.addEventListener('click', (e) => { if(navLinks?.classList.contains('ope
 
 function fmtDate(ts){ const d = ts && ts.toDate ? ts.toDate() : new Date(ts || Date.now()); return d.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }); }
 function escapeHtml(str){ const div = document.createElement('div'); div.textContent = str || ''; return div.innerHTML; }
+
+function setBtnLoading(btn, isLoading) {
+  if (!btn) return;
+  if (isLoading) {
+    btn.dataset.originalHtml = btn.innerHTML;
+    btn.dataset.originalWidth = btn.style.width || '';
+    btn.style.width = btn.offsetWidth + 'px';
+    btn.innerHTML = '<i data-lucide="loader-2" class="spin"></i>';
+    if(window.lucide) window.lucide.createIcons({ root: btn });
+    btn.disabled = true;
+    btn.style.opacity = '0.7';
+  } else {
+    btn.innerHTML = btn.dataset.originalHtml || btn.innerHTML;
+    btn.style.width = btn.dataset.originalWidth;
+    btn.disabled = false;
+    btn.style.opacity = '1';
+  }
+}
 
 function resizeAndEncode(file, maxDim, quality){
   return new Promise((resolve, reject) => {
@@ -649,8 +667,10 @@ document.querySelectorAll('.close-modal-btn, .btn-cancel, #cancelSignIn, #cancel
   btn.addEventListener('click', () => { modalBackdrop.classList.remove('show'); applyModalBackdrop.classList.remove('show'); });
 });
 
-document.getElementById('doSignIn').addEventListener('click', async () => {
+document.getElementById('doSignIn').addEventListener('click', async (e) => {
   const msg = document.getElementById('signInMsg');
+  const btn = e.currentTarget;
+  setBtnLoading(btn, true);
   try { 
     await signInWithEmailAndPassword(auth, document.getElementById('emailInput').value, document.getElementById('passInput').value); 
     if (targetAction === 'signin') {
@@ -660,12 +680,16 @@ document.getElementById('doSignIn').addEventListener('click', async () => {
     }
   } 
   catch (err) { msg.textContent = "Sign-in failed — check credentials."; }
+  finally { setBtnLoading(btn, false); }
 });
 
-document.getElementById('publishPost').addEventListener('click', async () => {
+document.getElementById('publishPost').addEventListener('click', async (e) => {
+  const btn = e.currentTarget;
   const title = document.getElementById('pTitle').value.trim(); const author = document.getElementById('pAuthor').value.trim(); const tag = document.getElementById('pTag').value.trim(); const body = document.getElementById('pBody').value.trim();
   if(!title || !body) return;
+  setBtnLoading(btn, true);
   try{ await addDoc(postsRef, { title, author, tag, body, image: pendingPostImage || null, createdAt: serverTimestamp(), authorUid: currentUser.uid }); modalBackdrop.classList.remove('show'); document.getElementById('pTitle').value = ''; document.getElementById('pBody').value = ''; }catch(err){}
+  finally { setBtnLoading(btn, false); }
 });
 
 const mRole = document.getElementById('mRole');
@@ -713,7 +737,7 @@ document.getElementById('submitTeam').addEventListener('click', async () => {
     return;
   }
   
-  if (submitBtn) submitBtn.disabled = true;
+  if (submitBtn) setBtnLoading(submitBtn, true);
   if (msg) { msg.textContent = 'Adding to roster...'; msg.className = 'form-msg'; }
 
   try{ 
@@ -737,7 +761,7 @@ document.getElementById('submitTeam').addEventListener('click', async () => {
       msg.className = 'form-msg err';
     }
   } finally {
-    if (submitBtn) submitBtn.disabled = false;
+    if (submitBtn) setBtnLoading(submitBtn, false);
   }
 });
 
@@ -763,24 +787,28 @@ document.getElementById('saveEditTeam')?.addEventListener('click', async () => {
     return;
   }
 
-  if (saveBtn) saveBtn.disabled = true;
+  if (saveBtn) setBtnLoading(saveBtn, true);
   if (msg) {
     msg.textContent = 'Saving changes...';
     msg.className = 'form-msg';
   }
 
   try {
-    await updateDoc(doc(db, "team", id), {
-      name,
-      authEmail,
-      rollNo,
-      isFounder,
-      role,
-      verticals,
-      bio,
-      updatedAt: serverTimestamp(),
-      lastUpdatedByUid: currentUser?.uid || null
-    });
+    const data = { 
+      name, 
+      authEmail, 
+      rollNo, 
+      isFounder, 
+      role, 
+      verticals, 
+      bio, 
+      updatedAt: serverTimestamp(), 
+      lastUpdatedByUid: currentUser?.uid || null 
+    };
+    if (typeof pendingEditMemberPhoto !== 'undefined') data.photo = pendingEditMemberPhoto;
+    else if (document.getElementById('editMPhotoPreview')?.style.display === 'none') data.photo = null;
+
+    await updateDoc(doc(db, "team", id), data);
     modalBackdrop.classList.remove('show');
   } catch (err) {
     console.error('Error updating member:', err);
@@ -789,19 +817,25 @@ document.getElementById('saveEditTeam')?.addEventListener('click', async () => {
       msg.className = 'form-msg err';
     }
   } finally {
-    if (saveBtn) saveBtn.disabled = false;
+    if (saveBtn) setBtnLoading(saveBtn, false);
   }
 });
 
-document.getElementById('publishAnnounce').addEventListener('click', async () => {
+document.getElementById('publishAnnounce').addEventListener('click', async (e) => {
+  const btn = e.currentTarget;
   const title = document.getElementById('anTitle').value.trim(); const priority = document.getElementById('anPriority').value; const body = document.getElementById('anBody').value.trim();
   if(!title || !body) return;
+  setBtnLoading(btn, true);
   try{ await addDoc(announcementsRef, { title, priority, body, author: currentUser.email, authorUid: currentUser.uid, createdAt: serverTimestamp() }); modalBackdrop.classList.remove('show'); }catch(err){}
+  finally { setBtnLoading(btn, false); }
 });
 
-document.getElementById('publishRoadmap')?.addEventListener('click', async () => {
+document.getElementById('publishRoadmap')?.addEventListener('click', async (e) => {
+  const btn = e.currentTarget;
   const stepNum = document.getElementById('rStepNum').value; const statusVal = parseInt(document.getElementById('rStatus').value, 10);
+  setBtnLoading(btn, true);
   try{ await setDoc(roadmapDocRef, { [stepNum]: statusVal }, { merge: true }); modalBackdrop.classList.remove('show'); }catch(err){}
+  finally { setBtnLoading(btn, false); }
 });
 
 const aName = document.getElementById('aName'); const aEmail = document.getElementById('aEmail'); const aBranch = document.getElementById('aBranch'); const aRoll = document.getElementById('aRoll'); const aVertical = document.getElementById('aVertical'); const aWhy = document.getElementById('aWhy'); const applyMsg = document.getElementById('applyMsg'); const submitApplyBtn = document.getElementById('submitApply');
@@ -818,9 +852,9 @@ submitApplyBtn?.addEventListener('click', async () => {
   }
   const name = aName.value.trim(); const email = aEmail.value.trim(); const branch = aBranch.value.trim(); const roll = aRoll.value.trim(); const vertical = aVertical.value; const why = aWhy.value.trim();
   if(!name || !email || !branch || !roll || !vertical){ applyMsg.textContent = 'Please fill out all required fields.'; applyMsg.className = 'form-msg err'; return; }
-  submitApplyBtn.disabled = true; applyMsg.textContent = 'Submitting…'; applyMsg.className = 'form-msg';
-  try{ await addDoc(applicationsRef, { name, email, branch, roll, vertical, why, createdAt: serverTimestamp() }); applyMsg.textContent = 'Application received!'; applyMsg.className = 'form-msg ok'; setTimeout(() => { applyModalBackdrop.classList.remove('show'); submitApplyBtn.disabled = false; }, 1100); }
-  catch(err){ applyMsg.textContent = 'Submission error.'; applyMsg.className = 'form-msg err'; submitApplyBtn.disabled = false; }
+  setBtnLoading(submitApplyBtn, true); applyMsg.textContent = 'Submitting…'; applyMsg.className = 'form-msg';
+  try{ await addDoc(applicationsRef, { name, email, branch, roll, vertical, why, createdAt: serverTimestamp() }); applyMsg.textContent = 'Application received!'; applyMsg.className = 'form-msg ok'; setTimeout(() => { applyModalBackdrop.classList.remove('show'); setBtnLoading(submitApplyBtn, false); }, 1100); }
+  catch(err){ applyMsg.textContent = 'Submission error.'; applyMsg.className = 'form-msg err'; setBtnLoading(submitApplyBtn, false); }
 });
 
 /* --- WORKSHOP BUILD GALLERY & LIGHTBOX --- */
@@ -1060,7 +1094,8 @@ addMediaModalBackdrop?.addEventListener('click', (e) => {
   if (e.target === addMediaModalBackdrop) closeAddMediaModal();
 });
 
-saveAddMediaBtn?.addEventListener('click', async () => {
+saveAddMediaBtn?.addEventListener('click', async (e) => {
+  const btn = e.currentTarget;
   const title = document.getElementById('mediaTitle').value.trim();
   const category = document.getElementById('mediaCategory').value;
   const tag = document.getElementById('mediaTag').value.trim() || 'Workshop';
@@ -1074,7 +1109,7 @@ saveAddMediaBtn?.addEventListener('click', async () => {
     return;
   }
 
-  if (saveAddMediaBtn) saveAddMediaBtn.disabled = true;
+  setBtnLoading(btn, true);
   if (msg) { msg.textContent = 'Uploading media...'; msg.className = 'form-msg'; }
 
   try {
@@ -1094,7 +1129,7 @@ saveAddMediaBtn?.addEventListener('click', async () => {
       msg.className = 'form-msg err';
     }
   } finally {
-    if (saveAddMediaBtn) saveAddMediaBtn.disabled = false;
+    setBtnLoading(btn, false);
   }
 });
 

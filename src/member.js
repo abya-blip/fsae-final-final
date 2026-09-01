@@ -1,12 +1,30 @@
-import { auth, db } from "./firebase-init.js";
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-import { doc, getDoc, updateDoc, collection, query, where, orderBy, getDocs, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+import { auth, db } from "../firebase-init.js";
+import { onAuthStateChanged } from "firebase/auth";
+import { doc, getDoc, updateDoc, collection, query, where, orderBy, getDocs, addDoc, serverTimestamp } from "firebase/firestore";
 
 // Utility for safe HTML output
-function escapeHtml(str){
+function escapeHtml(str) {
   const div = document.createElement('div');
   div.textContent = str || '';
   return div.innerHTML;
+}
+
+function setBtnLoading(btn, isLoading) {
+  if (!btn) return;
+  if (isLoading) {
+    btn.dataset.originalHtml = btn.innerHTML;
+    btn.dataset.originalWidth = btn.style.width || '';
+    btn.style.width = btn.offsetWidth + 'px';
+    btn.innerHTML = '<i data-lucide="loader-2" class="spin"></i>';
+    if(window.lucide) window.lucide.createIcons({ root: btn });
+    btn.disabled = true;
+    btn.style.opacity = '0.7';
+  } else {
+    btn.innerHTML = btn.dataset.originalHtml || btn.innerHTML;
+    btn.style.width = btn.dataset.originalWidth;
+    btn.disabled = false;
+    btn.style.opacity = '1';
+  }
 }
 
 let currentUser = null;
@@ -304,7 +322,7 @@ document.getElementById('saveProfEdit')?.addEventListener('click', async () => {
     return;
   }
 
-  if (saveBtn) saveBtn.disabled = true;
+  if (saveBtn) setBtnLoading(saveBtn, true);
   if (msg) {
     msg.textContent = 'Saving changes...';
     msg.className = 'form-msg';
@@ -330,7 +348,7 @@ document.getElementById('saveProfEdit')?.addEventListener('click', async () => {
       msg.className = 'form-msg err';
     }
   } finally {
-    if (saveBtn) saveBtn.disabled = false;
+    if (saveBtn) setBtnLoading(saveBtn, false);
   }
 });
 
@@ -401,7 +419,7 @@ document.getElementById('saveAddLog')?.addEventListener('click', async () => {
     return;
   }
 
-  if (saveBtn) saveBtn.disabled = true;
+  if (saveBtn) setBtnLoading(saveBtn, true);
   if (msg) {
     msg.textContent = 'Publishing technical log...';
     msg.className = 'form-msg';
@@ -427,7 +445,7 @@ document.getElementById('saveAddLog')?.addEventListener('click', async () => {
       msg.className = 'form-msg err';
     }
   } finally {
-    if (saveBtn) saveBtn.disabled = false;
+    if (saveBtn) setBtnLoading(saveBtn, false);
   }
 });
 

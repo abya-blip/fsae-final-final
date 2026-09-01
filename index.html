@@ -5,7 +5,23 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="view-transition" content="same-origin">
 <title>IIPE Racing — SAE Supra 2027</title>
+<meta name="description" content="IIPE Racing is a first-year Formula Student team designing and building a single-seater race car from scratch for SAE Supra 2027.">
 <meta name="theme-color" content="#050505">
+
+<!-- Open Graph / LinkedIn / Facebook -->
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://iipe-fsteam.vercel.app/">
+<meta property="og:title" content="IIPE Racing - Zero to grid, one build season at a time">
+<meta property="og:description" content="Join our founding team. We're designing and building an open-wheel single-seater for SAE Supra 2027.">
+<meta property="og:image" content="https://iipe-fsteam.vercel.app/assets/logo.png">
+
+<!-- Twitter -->
+<meta property="twitter:card" content="summary_large_image">
+<meta property="twitter:url" content="https://iipe-fsteam.vercel.app/">
+<meta property="twitter:title" content="IIPE Racing - Formula Student">
+<meta property="twitter:description" content="Join our founding team. We're designing and building an open-wheel single-seater for SAE Supra 2027.">
+<meta property="twitter:image" content="https://iipe-fsteam.vercel.app/assets/logo.png">
+
 <link rel="icon" href="assets/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="256x256" href="assets/favicon-256.png">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
@@ -91,20 +107,20 @@
       <a class="magnetic-el mobile-only" id="navMobileSignInBtn" style="cursor:pointer;">Sign In</a>
     </nav>
     <div class="nav-right" style="position:relative;">
-      <button class="nav-icon-btn magnetic-el" id="notifBtn" style="color:var(--text-secondary); display:none; position:relative;" title="Notifications">
+      <button class="nav-icon-btn magnetic-el" id="notifBtn" aria-label="Notifications" style="color:var(--text-secondary); display:none; position:relative;" title="Notifications">
         <i data-lucide="bell" style="width:20px;height:20px;"></i>
         <span class="notif-badge" id="notifBadge" style="display:none; position:absolute; top:-2px; right:-2px; background:var(--accent); width:8px; height:8px; border-radius:50%;"></span>
       </button>
       <div class="notif-dropdown" id="notifDropdown" style="display:none; position:absolute; top:45px; right:0; width:300px; background:var(--bg-elevated); border:1px solid var(--border-subtle); border-radius:var(--radius-md); padding:16px; z-index:100; box-shadow:var(--shadow-lg);">
         <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-subtle); padding-bottom:12px; margin-bottom:12px;">
           <strong style="font-size:14px;">Notifications</strong>
-          <button id="markAllReadBtn" style="font-size:12px; color:var(--text-secondary);">Clear</button>
+          <button id="markAllReadBtn" aria-label="Clear all notifications" style="font-size:12px; color:var(--text-secondary);">Clear</button>
         </div>
         <div id="notifList" style="max-height:300px; overflow-y:auto; font-size:13px; color:var(--text-secondary); display:flex; flex-direction:column; gap:12px;"></div>
       </div>
       <button class="btn-secondary btn-nav magnetic-el" id="navSignInBtn" style="cursor:pointer;">Sign In</button>
       <a href="#join" class="btn-primary btn-nav magnetic-el" id="navJoinBtn">Join The Team</a>
-      <button class="menu-btn magnetic-el" id="menuBtn"><i data-lucide="menu"></i></button>
+      <button class="menu-btn magnetic-el" id="menuBtn" aria-label="Toggle mobile menu"><i data-lucide="menu"></i></button>
     </div>
   </div>
 </header>
@@ -151,7 +167,12 @@
   </div>
 
   <div class="announce-grid" id="announceList">
-    <div class="empty-state"><i data-lucide="loader-2" class="spin"></i> Loading announcements...</div>
+    <!-- Skeleton Loader for Announcements -->
+    <div class="skeleton-card skeleton">
+      <div class="skeleton-text" style="width: 70%; height: 24px; margin-bottom: 12px;"></div>
+      <div class="skeleton-text" style="width: 100%; height: 14px; margin-bottom: 8px;"></div>
+      <div class="skeleton-text" style="width: 40%; height: 14px;"></div>
+    </div>
   </div>
 </section>
 
@@ -186,7 +207,28 @@
 
   <div class="swiper team-swiper gsap-fade-up">
     <div class="swiper-wrapper" id="teamGrid">
-      <div class="empty-state"><i data-lucide="loader-2" class="spin"></i> Loading team...</div>
+      <!-- Skeleton Loaders for Team -->
+      <div class="swiper-slide">
+        <div class="team-card skeleton">
+          <div class="skeleton-img"></div>
+          <div class="skeleton-text" style="width: 80%; height: 20px; margin: 16px auto 8px;"></div>
+          <div class="skeleton-text" style="width: 50%; height: 14px; margin: 0 auto;"></div>
+        </div>
+      </div>
+      <div class="swiper-slide">
+        <div class="team-card skeleton">
+          <div class="skeleton-img"></div>
+          <div class="skeleton-text" style="width: 80%; height: 20px; margin: 16px auto 8px;"></div>
+          <div class="skeleton-text" style="width: 50%; height: 14px; margin: 0 auto;"></div>
+        </div>
+      </div>
+      <div class="swiper-slide">
+        <div class="team-card skeleton">
+          <div class="skeleton-img"></div>
+          <div class="skeleton-text" style="width: 80%; height: 20px; margin: 16px auto 8px;"></div>
+          <div class="skeleton-text" style="width: 50%; height: 14px; margin: 0 auto;"></div>
+        </div>
+      </div>
     </div>
     <div class="swiper-button-prev magnetic-el"></div>
     <div class="swiper-button-next magnetic-el"></div>
@@ -252,7 +294,14 @@
   </div>
 
   <div class="blog-list" id="blogList">
-    <div class="empty-state"><i data-lucide="loader-2" class="spin"></i> Loading posts...</div>
+    <!-- Skeleton Loader for Posts -->
+    <div class="post-card skeleton" style="border: none;">
+      <div class="skeleton-text" style="width: 40%; height: 28px; margin-bottom: 16px;"></div>
+      <div class="skeleton-img" style="border-radius: var(--radius-sm); margin-bottom: 16px;"></div>
+      <div class="skeleton-text" style="width: 100%; height: 16px; margin-bottom: 8px;"></div>
+      <div class="skeleton-text" style="width: 90%; height: 16px; margin-bottom: 8px;"></div>
+      <div class="skeleton-text" style="width: 30%; height: 14px; margin-top: 16px;"></div>
+    </div>
   </div>
 </section>
 
@@ -280,7 +329,7 @@
 <!-- Modals -->
 <div class="modal-backdrop" id="modalBackdrop">
   <div class="modal">
-    <button class="close-modal-btn btn-cancel magnetic-el" id="cancelSignIn"><i data-lucide="x"></i></button>
+    <button class="close-modal-btn btn-cancel magnetic-el" id="cancelSignIn" aria-label="Close sign in"><i data-lucide="x"></i></button>
     <h3 id="modalTitle" class="modal-title">Team Sign In</h3>
     
     <!-- Sign In Step -->
@@ -457,7 +506,7 @@
 <!-- Apply Modal -->
 <div class="modal-backdrop" id="applyModalBackdrop">
   <div class="modal">
-    <button class="close-modal-btn btn-cancel magnetic-el" id="cancelApply"><i data-lucide="x"></i></button>
+    <button class="close-modal-btn btn-cancel magnetic-el" id="cancelApply" aria-label="Close application form"><i data-lucide="x"></i></button>
     <h3 class="modal-title">Apply To Join</h3>
     <p class="modal-switch" style="margin-top:-16px; margin-bottom:24px;">Two minutes to fill out. Every single application gets read by a founder — not a filter.</p>
     <div class="field"><label>Full name</label><input type="text" id="aName" placeholder="Your full name"></div>
@@ -507,7 +556,11 @@
     </div>
 
     <div class="gallery-grid" id="galleryGrid">
-      <div class="empty-state"><i data-lucide="loader-2" class="spin"></i> Loading workshop media...</div>
+      <!-- Skeleton Loaders for Gallery -->
+      <div class="gallery-card skeleton"><div class="skeleton-img"></div></div>
+      <div class="gallery-card skeleton"><div class="skeleton-img"></div></div>
+      <div class="gallery-card skeleton"><div class="skeleton-img"></div></div>
+      <div class="gallery-card skeleton"><div class="skeleton-img"></div></div>
     </div>
   </div>
 </div>
@@ -594,6 +647,6 @@
      happened, which is what left the preloader up forever. script.js and
      member.js also guard against this themselves now, but the static tag is
      what makes the timing correct in the first place. -->
-<script type="module" src="script.js?v=10"></script>
+<script type="module" src="/src/main.js"></script>
 </body>
 </html>
